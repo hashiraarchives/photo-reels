@@ -1,4 +1,5 @@
 name: daily
+# runs the publishing pipeline
 
 # 22:00 UTC (6 PM US Eastern). Every upload is private with a scheduled
 # publish on the NEXT Eastern day, so there is always a review window.
