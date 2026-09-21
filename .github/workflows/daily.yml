@@ -1,0 +1,89 @@
+name: daily
+
+# 22:00 UTC (6 PM US Eastern). Every upload is private with a scheduled
+# publish on the NEXT Eastern day, so there is always a review window.
+on:
+  schedule:
+    - cron: '0 22 * * *'
+  workflow_dispatch:
+    inputs:
+      shorts:
+        description: 'Number of shorts only (blank = normal daily run)'
+        required: false
+        default: ''
+
+concurrency:
+  group: daily
+  cancel-in-progress: false
+
+permissions:
+  contents: write        # commits the pool state (used-marks, ledgers) back
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    # Public repo: runner minutes are free. The cap only stops a hung run.
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg fonts-dejavu-core
+
+      - name: Install Python deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Unpack private media
+        # Licensed music, intro and thumbnail bases are not redistributable,
+        # so they live in the repo only as an AES-256 bundle.
+        env:
+          ASSETS_KEY: ${{ secrets.ASSETS_KEY }}
+        run: |
+          printf '%s' "$ASSETS_KEY" > "$RUNNER_TEMP/k"
+          openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 \
+            -pass file:"$RUNNER_TEMP/k" -in assets/bundle.enc | tar xz
+          rm -f "$RUNNER_TEMP/k"
+          ls assets | head -20
+
+      - name: Seed YouTube token
+        env:
+          YOUTUBE_TOKEN_JSON: ${{ secrets.YOUTUBE_TOKEN_JSON }}
+        run: python seed_data.py
+
+      - name: Generate and upload
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          YOUTUBE_TOKEN_JSON: ${{ secrets.YOUTUBE_TOKEN_JSON }}
+          PYTHONUNBUFFERED: '1'
+        run: |
+          if [ -n "${{ github.event.inputs.shorts }}" ]; then
+            python scheduler.py --shorts ${{ github.event.inputs.shorts }}
+          else
+            python scheduler.py --daily
+          fi
+
+      - name: Persist pool state
+        # No volume on Actions: used-marks, title/star ledgers and the playlist
+        # cache ARE the pipeline's memory, so they are committed back. This
+        # daily commit also keeps the schedule alive (GitHub pauses cron on
+        # public repos after 60 days without activity).
+        if: always()
+        run: |
+          rm -f youtube_token.json
+          git config user.name  "archive-bot"
+          git config user.email "archive-bot@users.noreply.github.com"
+          git add seed_data/ || true
+          if git diff --cached --quiet; then
+            echo "no pool changes to persist"
+          else
+            git commit -m "chore: pool state $(date -u +%Y-%m-%d) [skip ci]"
+            git pull --rebase --autostash origin master || true
+            git push origin HEAD:master
+          fi

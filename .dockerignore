@@ -1,0 +1,37 @@
+__pycache__/
+*.pyc
+*.pyo
+youtube_token.json
+logs/
+*.bat
+stay_young_video/
+*.mp4
+*.log
+.git/
+.gitignore
+
+# Old scraped image directories inside assets/ (but keep thumbnail_bases)
+assets/*/
+!assets/thumbnail_bases/
+!assets/intro_voice/
+!assets/*.mp3
+!assets/*.mp4
+!assets/*.png
+
+# Old unused scripts
+make_*.py
+run_short*.py
+scrape_actress_images.py
+actress_database*.py
+create_weekly_content.py
+advanced_image_scraper.py
+create_synced_short.py
+create_perfect_synced_short.py
+create_legacy_short.py
+create_perfect_final.py
+create_ultimate_short.py
+create_masterpiece.py
+create_batch_masterpieces.py
+create_flawless.py
+create_polished.py
+create_visual_excellence.py

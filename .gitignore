@@ -1,0 +1,49 @@
+# --- credentials: never committed (the workflow builds the token from a secret)
+client_secret.json
+youtube_token.json
+.env
+*.key
+
+# --- licensed / non-public-domain media: shipped only inside assets/bundle.enc
+assets/*.mp3
+assets/*.wav
+assets/intro.mp4
+assets/channel logo.png
+assets/intro_voice/
+assets/thumbnail_bases/
+assets/*/
+
+# --- build output and local clutter
+output/
+logs/
+__pycache__/
+*.pyc
+*.log
+*.bat
+
+# --- local-only notes, experiments and legacy scripts (never published)
+*.txt
+!requirements.txt
+*.md
+stay_young_video/
+actress_database*.py
+advanced_image_scraper.py
+create_batch_masterpieces.py
+create_flawless.py
+create_legacy_short.py
+create_masterpiece.py
+create_perfect_final.py
+create_perfect_synced_short.py
+create_polished.py
+create_quality_short.py
+create_synced_short.py
+create_ultimate_short.py
+create_visual_excellence.py
+create_weekly_content.py
+make_*.py
+run_short*.py
+scrape_actress_images.py
+goldmine3_review.csv
+harvest_state.json
+new_shorts/
+shorts/
