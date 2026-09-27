@@ -269,6 +269,13 @@ def extract_decade_range(metadata: Dict) -> str:
                 break
     if not years:
         return "(1930s-1960s)"
+    # Trim the tails: one stray 1905 caption turned a 1940s-50s video into
+    # "(1900s-1980s)", which reads as unfocused. Competitor titles that carry
+    # a tight range, e.g. "(1940s-60s)", ran 1.12x their channel median.
+    years.sort()
+    if len(years) >= 10:
+        k = max(1, len(years) // 10)
+        years = years[k:-k]
     lo_d, hi_d = (min(years) // 10) * 10, (max(years) // 10) * 10
     return f"({lo_d}s)" if lo_d == hi_d else f"({lo_d}s-{hi_d}s)"
 
@@ -377,6 +384,22 @@ def finalize_title(title: str, allow_emoji: bool = False, emoji_on: bool = False
     return title
 
 
+_CANDID_RE = re.compile(r'candid|on the set|on set|behind the scenes|at home|off[- ]?screen|'
+                        r'vacation|holiday|beach|party|nightclub|airport|arriv|rehears|'
+                        r'relaxing|with (?:his|her) (?:wife|husband|son|daughter|dog)', re.I)
+
+
+def _has_candid(metadata: Dict) -> bool:
+    """True when at least 15% of the photos are genuinely candid/off-set, so a
+    candid-framed title is a promise the video keeps."""
+    imgs = metadata.get('images', [])
+    if not imgs:
+        return False
+    hits = sum(1 for img in imgs if _CANDID_RE.search(' '.join(
+        str(img.get(k) or '') for k in ('generated_caption', 'image_filename', 'title'))))
+    return hits >= max(3, 0.15 * len(imgs))
+
+
 def build_fallback_title(metadata: Dict) -> str:
     """
     Fallback title (Gemini-unavailable path). CURIOSITY-HOOK house style — the
@@ -392,31 +415,44 @@ def build_fallback_title(metadata: Dict) -> str:
 
     # Generic (no-focus-star) fallbacks. Counts never LEAD (own data: count-led
     # titles ran median 142 vs 332); the decade anchor supplies specificity.
+    # 2026-09-27 competitor study (564 long-form videos, views relative to each
+    # channel's own median): viewer-nostalgia wording ("take you back", "your
+    # youth") 1.27x, a decade range 1.12x; photo counts 0.89x, scandal/shock
+    # 0.66x. Candid wording scored 1.37x but only goes on videos that really
+    # contain candid material (see _has_candid) -- a studio-portrait video sold
+    # as "caught off guard" is the promise mismatch that sank the channel in May.
     templates = [
-        f"What Hollywood's Most Beautiful Women Looked Like Off Camera {decade}",
+        f"Rare Photos That Take You Straight Back to Hollywood's Golden Age {decade}",
+        f"One Look and You're Back: Rare Portraits of Old Hollywood's Leading Ladies {decade}",
+        f"The Stars Your Parents Swooned Over - Rare Vintage Photos {decade}",
+        f"Remember When Hollywood Looked Like This? Rare Glamour Photos {decade}",
+        f"Old Hollywood the Way You Remember It - Rare Portraits {decade}",
         f"The Golden Age Photos Collectors Hunt For {decade}",
-        f"When the Studio Cameras Kept Rolling - Candid Frames {decade}",
-        f"Hollywood's Most Daring Looks {decade} - Photos That Still Turn Heads",
-        f"Caught Off Guard: Unfiltered Photos of Golden Age Stars {decade}",
-        f"Hidden for Decades: Rare Old Hollywood Photos {decade}",
-        f"The Glamour Shots That Made {decade} Hollywood Unforgettable",
-        f"Faces the Studios Made Famous - {count} Rare Photos {decade}",
+        f"The Glamour Shots That Made Old Hollywood Unforgettable {decade}",
     ]
+    if _has_candid(metadata):
+        templates = [
+            f"Old Hollywood Off Camera: Rare Candid Photos That Take You Back {decade}",
+            f"Caught Off Guard: Rare Unposed Photos of Golden Age Stars {decade}",
+            f"When the Studio Cameras Stopped Rolling - Rare Candid Photos {decade}",
+        ] + templates
     star_templates: List[str] = []
     if lead and allow_names:
         # Star episode: the searchable NAME leads. Generic hooks are the weaker
         # register on this channel's own data (median 233 vs 380). These are
         # tried BEFORE the generic set - simply prepending them was not enough,
         # because the seeded rotation below would skip straight past them.
+        import star_data as sd
+        pos = {'m': 'His', 'f': 'Her'}.get(sd.star_gender(names[0]) or '', 'Their')
         star_templates = [
-            f"What {names[0]} Looked Like Off Camera {decade}",
-            f"{names[0]}'s Most Daring Looks - Photos That Still Turn Heads",
+            f"Remember {names[0]}? Rare Photos That Take You Right Back {decade}",
+            f"{names[0]} at the Height of {pos} Fame - Rare Vintage Photos {decade}",
             f"The {names[0]} Photos Collectors Hunt For {decade}",
-            f"When {names[0]} Stopped Posing - Candid Frames {decade}",
-            f"{names[0]} at the Height of Her Fame {decade}",
-            f"The {names[0]} Photos the Studios Kept Quiet",
-            f"{names[0]}: The Photos They Never Meant You to See",
+            f"One Look and You're Back: Rare Photos of {names[0]} {decade}",
+            f"They Don't Make Them Like {names[0]} Anymore - Rare Photos {decade}",
         ]
+        if _has_candid(metadata):
+            star_templates.insert(0, f"{names[0]} Off Camera - Rare Candid Photos {decade}")
     # Prefer templates that fit cleanly (leave room for the optional emoji),
     # so the title never gets ellipsized mid-phrase.
     seed = _video_seed(metadata)
@@ -596,12 +632,46 @@ def build_description(metadata: Dict, title: str = "") -> str:
     # small channel can earn.
     question = "💬 " + build_first_comment(focus, seed=seed)
 
-    parts = [
+    # Competitor pattern (all three channels): the title is the first line,
+    # the stars inside are NAMED (every name is a search term), and a personal
+    # voice sits among the SEO prose. Their descriptions run 2.2k-4.7k chars.
+    roll = [n for n, _ in extract_top_stars(metadata, n=8)]
+    if focus and focus not in roll:
+        roll.insert(0, focus)
+    roll_line = ("⭐ In this collection: " + ", ".join(roll[:8])) if roll else ""
+    import star_data as sd
+    q = sd.pick_quote(focus, seed) if focus else None
+    quote_line = (f"🎬 \u201c{q[0]}\u201d \u2014 {focus}, {q[1]}") if q else ""
+    notes = [
+        ("❤️ A personal note: I put these collections together because these faces "
+         "deserve to be remembered. If one of them takes you back to a Saturday "
+         "matinee, a drive-in, or the late movie on TV, tell me about it in the "
+         "comments. I read every single one."),
+        ("❤️ Why I make these: somewhere in every old photograph is a memory "
+         "waiting for someone. Maybe it's a star your mother adored, or the first "
+         "film you saw on a date. Share it below. This is a kind corner of the "
+         "internet, and your stories make it better."),
+        ("❤️ Thank you for watching. These videos are meant to be a quiet, happy "
+         "half hour: put the music on, sit back, and let the golden age do the "
+         "rest. If a face brings back a memory, the comments are open."),
+    ]
+    tags_line = ' '.join('#' + re.sub(r"[^A-Za-z]", '', n) for n in roll[:2])
+    tags_line = (tags_line + ' #OldHollywood #VintagePhotos').strip()
+
+    parts = ([title, ""] if title else []) + [
         hooks[seed % 3], "",
         question, "",
+    ]
+    if roll_line:
+        parts += [roll_line, ""]
+    if quote_line:
+        parts += [quote_line, ""]
+    parts += [
         sec_glamour, "",
         sec_rare, "",
         sec_nostalgia, "",
+        notes[seed % len(notes)], "",
+        tags_line, "",
         "━━━━━━━━━━━━━━━━━━━━━━", "",
         CHANNEL_EVERGREEN,
     ]
@@ -1097,58 +1167,107 @@ if __name__ == "__main__":
 # A Short is consumed in a scroll: the title is read in under a second, often
 # after the video already started playing. So it is SHORT, leads with the
 # searchable name, and carries #Shorts so YouTube shelves it correctly.
-_SHORT_HOOKS = [
-    "{star} in {year}",
-    "{star} — the photo they kept quiet",
-    "{star} at the absolute peak",
-    "Remember {star}? (rare photos)",
-    "They don't make stars like {star} anymore",
-    "{star} - pure old Hollywood class",
-    "If you remember {star}, watch this",
+# Short titles. Own data (2026-09-21..26, n=17, directional only): "{star}
+# in {year}" median 906 views, "before the studio polish" 788, generic 564,
+# "{year}, unretouched" 180. Gendered wording lives in separate lists: a single
+# shared list once produced "This is Gary Cooper at her peak".
+_SHORT_STAR_ANY = [
     "{star}, before the studio polish",
+    "They don't make stars like {star} anymore",
+    "What {star} really looked like",
     "Nobody talks about this {star} photo",
     "{star} stopped the room",
-    "What {star} really looked like",
-    "{star}: {year}, unretouched",
+    "Remember {star}? (rare photos)",
+]
+_SHORT_STAR_F = [
+    "{star} didn't need a filter",
+    "{star} at the absolute peak",
+    "Admit it, you had a crush on {star}",      # only for stars born 1915+
+]
+_SHORT_STAR_M = [
+    "Every guy wanted to be {star}",
+    "{star}: pure old Hollywood cool",
+    "{star} was cooler than all of us",
 ]
 _SHORT_GENERIC = [
     "Old Hollywood glamour you've never seen",
     "The Golden Age looked like this",
     "Hollywood's most beautiful faces",
     "Rare glamour from the Golden Age",
+    "Hollywood before filters existed",
+    "No filters, no Botox, just old Hollywood",
+    "They really don't make them like this anymore",
+    "Proof Grandpa had great taste",
+    "The original influencers (rare photos)",
+    "Back when stars were STARS",
 ]
 
 
-def build_short_title(metadata: Dict) -> str:
-    """Punchy vertical-format title. <= ~70 chars including the tag."""
-    star = (metadata.get('focus_star') or '').strip()
-    if not star:
-        tops = extract_top_stars(metadata, n=1)
-        star = tops[0][0] if tops else ''
-    decade = extract_decade_range(metadata).strip('()')
-    year = ''
+def _star_year(metadata: Dict, star: str) -> str:
+    """First year that is (a) on a photo of THIS star and (b) possible for
+    them. The old code took the first year on any caption in the short, which
+    shipped "Marilyn Monroe in 1929" (age three) and "Lana Turner in 1935"."""
+    import star_data as sd
+    sl = star.lower()
+    sn = sl.split()[-1]
     for img in metadata.get('images', []):
-        m = _YEAR_RE.search(str(img.get('generated_caption') or ''))
-        if m:
-            year = m.group(1)
-            break
+        blob = ' '.join(str(img.get(k) or '') for k in
+                        ('generated_caption', 'image_filename', 'source_category')).lower()
+        if sl not in blob and sn not in blob:
+            continue
+        for field in ('generated_caption', 'image_filename'):
+            m = _YEAR_RE.search(str(img.get(field) or ''))
+            if m and sd.plausible_year(star, int(m.group(1))):
+                return m.group(1)
+    return ''
+
+
+def build_short_title(metadata: Dict) -> str:
+    """Punchy vertical-format title. <= ~70 chars including the tag.
+
+    Names a star ONLY when the short is really about them (focus_star survives
+    the renderer's 90% purity check). The old fallback guessed a name from the
+    captions of a mixed reel, so all four shorts of 2026-09-26 carried one
+    star's name over twelve other people's faces."""
+    import star_data as sd
+    star = (metadata.get('focus_star') or '').strip()
     seed = _video_seed(metadata)
 
     if star:
-        pool = [h for h in _SHORT_HOOKS if '{year}' not in h or year]
-        ordered = [pool[(seed + i) % len(pool)] for i in range(len(pool))]
-        for tmpl in ordered:
-            cand = tmpl.format(star=star, year=year or decade)
-            if not is_title_too_similar(cand):
-                break
-        else:
-            cand = ordered[0].format(star=star, year=year or decade)
+        g = sd.star_gender(star)
+        born = sd.STAR_INFO.get(star.lower(), ('', 0))[1]
+        pool = list(_SHORT_STAR_ANY)
+        if g == 'f':
+            pool += [t for t in _SHORT_STAR_F if 'crush' not in t or born >= 1915]
+        elif g == 'm':
+            pool += _SHORT_STAR_M
+        cands = [t.format(star=star) for t in pool]
+        cands = [cands[(seed + i) % len(cands)] for i in range(len(cands))]
+        # The two strongest formats jump the queue on alternating seeds.
+        year = _star_year(metadata, star)
+        if year:
+            cands.insert(0 if seed % 3 == 0 else 2, f"{star} in {year}")
+        q = metadata.get('quote') or []
+        if q and len(q[0]) <= 48:
+            cands.insert(0 if seed % 2 == 0 else 1, f'{star}: "{q[0].rstrip(".")}"')
     else:
-        pool = _SHORT_GENERIC
-        cand = pool[seed % len(pool)]
+        cands = [_SHORT_GENERIC[(seed + i) % len(_SHORT_GENERIC)]
+                 for i in range(len(_SHORT_GENERIC))]
+        # Mixed reel: named people are search terms, and a quote heard on
+        # screen makes a catchy, honest title. Both only when really present.
+        names = metadata.get('names') or []
+        if len(names) >= 2:
+            kind = ('beauties' if all(sd.star_gender(n) == 'f' for n in names[:2])
+                    else 'legends')
+            cands.insert(1 if seed % 2 else 3,
+                         f"{names[0]}, {names[1]} and more golden age {kind}")
+        q = metadata.get('quote') or []
+        if q and len(q[0]) <= 40:
+            cands.insert(0 if seed % 2 == 0 else 2,
+                         f'"{q[0].rstrip(".")}" and more Golden Age magic')
 
-    title = f"{cand} #Shorts"
-    return title[:99]
+    cand = next((c for c in cands if not is_title_too_similar(c)), cands[0])
+    return f"{cand} #Shorts"[:99]
 
 
 def build_short_description(metadata: Dict) -> str:
@@ -1156,12 +1275,22 @@ def build_short_description(metadata: Dict) -> str:
     star = (metadata.get('focus_star') or '').strip()
     decade = extract_decade_range(metadata)
     who = star or "classic Hollywood's most beautiful stars"
-    tag_star = ('#' + star.replace(' ', '').replace("'", '')) if star else ''
+    names = [n for n in (metadata.get('names') or []) if n != star]
+    first = star or (names[0] if names else '')
+    tag_star = ('#' + re.sub(r"[^A-Za-z]", '', first)) if first else ''
     question = build_first_comment(star, seed=_video_seed(metadata))
+    q = metadata.get('quote') or []
     lines = [
         f"✨ Rare vintage photographs of {who} {decade} — restored glamour from "
         f"the golden age of Hollywood.",
         "",
+    ]
+    if q:
+        said_by = q[2] if len(q) > 2 else star
+        lines += [f"🎬 \u201c{q[0]}\u201d \u2014 {said_by}, {q[1]}", ""]
+    if names and not star:
+        lines += ["⭐ Featuring: " + ", ".join(names[:8]), ""]
+    lines += [
         f"💬 {question}",
         "",
         "🎞️ A quiet minute of old Hollywood for everyone who still loves the "
@@ -1179,6 +1308,13 @@ def generate_short_tags(metadata: Dict) -> List[str]:
     star = (metadata.get('focus_star') or '').strip().lower()
     if star:
         tags += [star, f"{star} photos", star.split()[-1]]
+    for n in (metadata.get('names') or [])[:4]:
+        tags.append(n.lower())
+    q = metadata.get('quote') or []
+    if q:
+        film = re.sub(r'\s*\(\d{4}\)\s*$', '', q[1]).strip().lower()
+        said_by = (q[2] if len(q) > 2 else star).lower()
+        tags += [film, f"{said_by} quotes" if said_by else "classic movie quotes"]
     tags += ["shorts", "old hollywood", "vintage photos", "classic hollywood",
              "golden age", "glamour photos", "vintage actresses",
              "rare photos", "nostalgia", "black and white photography",

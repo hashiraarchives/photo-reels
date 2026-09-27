@@ -199,6 +199,24 @@ def _is_toned_monochrome(img: Image.Image) -> bool:
         return False
 
 
+def _looks_like_line_art(path: str) -> bool:
+    """
+    Veto for DRAWINGS: silhouettes, fashion plates, cartoons. A 2026-09-24
+    thumbnail led with a black silhouette illustration; flat line art has too
+    few edges for the print-matter test. What gives it away is tone: a
+    photograph is mostly midtones, a drawing is paper and ink. Calibrated on
+    that shipped panel (0.036 of pixels in 40-215) against 45 random curated
+    pool photos (lowest 0.357). Threshold 0.15 sits with a wide margin.
+    """
+    try:
+        g = Image.open(path).convert('L')
+        g.thumbnail((400, 400))
+        hist = g.histogram()
+        return sum(hist[40:216]) / max(1, sum(hist)) < 0.15
+    except Exception:
+        return False
+
+
 def _looks_like_print_matter(path: str) -> bool:
     """
     Content-based veto for ADS, POSTERS and TITLE CARDS reaching thumbnails.
@@ -623,7 +641,7 @@ def _pick_split_pair(paths: List[str], names: Optional[List[str]] = None) -> Lis
     scored = []
     for i, p in enumerate(paths[:8]):
         try:
-            if _looks_like_print_matter(p):
+            if _looks_like_print_matter(p) or _looks_like_line_art(p):
                 continue
             hint = (names[i] if names and i < len(names) else '') or ''
             key = ' '.join(hint.lower().split()[:2])  # subject fingerprint

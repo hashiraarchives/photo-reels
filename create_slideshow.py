@@ -57,7 +57,27 @@ def _passes_quality(row: Dict) -> bool:
     return not any(term in t for term in _JUNK_TERMS)
 
 
-def _row_is_available(row: Dict) -> bool:
+_PERMANENT_MARKS = ('GONE', 'LOWRES', 'REJECT', 'TRUE')
+
+
+def _short_available(row: Dict, days: int) -> bool:
+    """Availability for SHORTS, which keep their own ledger (`short_used`).
+    Owner call 2026-09-27: shorts may reuse long-form photos, so a long-form
+    date in `used` doesn't block them -- and, in the other direction, a
+    short's pick no longer locks a photo away from long-form for 30 days.
+    Permanent retire marks (deleted, low-res, rejected) still apply."""
+    if (row.get('used') or '').strip().upper() in _PERMANENT_MARKS:
+        return False
+    u = (row.get('short_used') or '').strip()
+    if not u:
+        return True
+    try:
+        return (datetime.now() - datetime.strptime(u[:10], '%Y-%m-%d')).days >= days
+    except ValueError:
+        return True
+
+
+def _row_is_available(row: Dict, cooldown_days: Optional[int] = None) -> bool:
     """
     Availability with RECYCLING. The PD photo pool is finite (the curated
     goldmine3 drained from 1,300 to ~32 usable rows in under a month), so
@@ -74,7 +94,8 @@ def _row_is_available(row: Dict) -> bool:
         return False                      # legacy mark, date unknown → blocked
     try:
         used_on = datetime.strptime(used[:10], '%Y-%m-%d')
-        cooldown = int(getattr(config, 'IMG_REUSE_DAYS', 60))
+        cooldown = (int(getattr(config, 'IMG_REUSE_DAYS', 60))
+                    if cooldown_days is None else cooldown_days)
         return (datetime.now() - used_on).days >= cooldown
     except ValueError:
         return False
@@ -148,7 +169,7 @@ def _rows_for_star(pools, star: str) -> List[Dict]:
                         + (r.get('source_category') or '')).lower()]
 
 
-def pick_focus_star(pools) -> Optional[str]:
+def pick_focus_star(pools, min_rows: Optional[int] = None) -> Optional[str]:
     """
     Choose the star for today's episode: the one with the most unused material,
     excluding those used in recent episodes so the channel doesn't run five
@@ -175,6 +196,7 @@ def pick_focus_star(pools) -> Optional[str]:
     except Exception:
         pass
 
+    need = STAR_EPISODE_MIN_ROWS if min_rows is None else min_rows
     counts = []
     all_counts = []
     for s in candidates:
@@ -183,7 +205,7 @@ def pick_focus_star(pools) -> Optional[str]:
             all_counts.append((n, s))
         if s in recent:
             continue
-        if n >= STAR_EPISODE_MIN_ROWS:
+        if n >= need:
             counts.append((n, s))
     if not counts:
         # Almost always a SUPPLY problem: the curated star-dense pool
@@ -193,7 +215,7 @@ def pick_focus_star(pools) -> Optional[str]:
         all_counts.sort(reverse=True)
         bench = ', '.join(f"{s}:{n}" for n, s in all_counts[:8]) or '(none)'
         print(f"  STAR EPISODE: declined — no star has "
-              f"{STAR_EPISODE_MIN_ROWS}+ unused rows. Deepest: {bench}"
+              f"{need}+ unused rows. Deepest: {bench}"
               + (f" | skipped as recent: {sorted(recent)}" if recent else ""))
         return None
     # Among those with enough material, prefer the deepest bench, breaking ties
@@ -222,7 +244,11 @@ def record_focus_star(star: str):
 def select_unused_images(count: int = config.IMAGES_PER_VIDEO,
                          angle: Optional[Tuple[str, Optional[int], Optional[int]]] = None,
                          pool_paths: Optional[Tuple[str, ...]] = None,
-                         star_share: Optional[float] = None
+                         star_share: Optional[float] = None,
+                         star_min_rows: Optional[int] = None,
+                         reuse_days: Optional[int] = None,
+                         for_shorts: bool = False,
+                         star_episode: bool = True
                          ) -> List[Dict]:
     """
     Select unused, quality (real-photo) images across the goldmine CSVs,
@@ -243,7 +269,8 @@ def select_unused_images(count: int = config.IMAGES_PER_VIDEO,
         if not rows:
             continue
         usable = [r for r in rows
-                  if _row_is_available(r) and _passes_quality(r)]
+                  if (_short_available(r, reuse_days or 14) if for_shorts
+                      else _row_is_available(r, reuse_days)) and _passes_quality(r)]
         pools.append((os.path.basename(path), usable))
 
     selected: List[Dict] = []
@@ -261,8 +288,8 @@ def select_unused_images(count: int = config.IMAGES_PER_VIDEO,
     # day now — the old 'mixed'-day skip silently disabled star episodes on
     # half of all days, and star rotation already provides the day-to-day
     # variety the mixed days existed for.
-    if getattr(config, 'STAR_EPISODES', True):
-        star = pick_focus_star(pools)
+    if getattr(config, 'STAR_EPISODES', True) and star_episode:
+        star = pick_focus_star(pools, min_rows=star_min_rows)
         if star is None:
             best = max(((len(_rows_for_star(pools, s)), s) for s in
                         __import__('youtube_uploader').LEADING_LADIES),
@@ -279,7 +306,7 @@ def select_unused_images(count: int = config.IMAGES_PER_VIDEO,
             # Scale the bar to the request. A 1-minute short selects ~17 rows,
             # so demanding a flat 15 star photos made star episodes impossible
             # for Shorts while long-form (130 rows) was unaffected.
-            need = min(STAR_EPISODE_MIN_ROWS,
+            need = min(STAR_EPISODE_MIN_ROWS if star_min_rows is None else star_min_rows,
                        max(4, int(count * share * 0.8)))
             if len(got) >= need:
                 selected.extend(got)
@@ -292,7 +319,7 @@ def select_unused_images(count: int = config.IMAGES_PER_VIDEO,
                       f"rows but only {len(got)} survived selection "
                       f"(need {STAR_EPISODE_MIN_ROWS})")
                 picked.difference_update(id(r) for r in got)
-    elif getattr(config, 'STAR_EPISODES', True):
+    elif getattr(config, 'STAR_EPISODES', True) and star_episode:
         print(f"  STAR EPISODE: not attempted — angle is '{angle_name}'")
 
     # Pass 1 — era-biased picks (~60% of the video) on era-angle days.
@@ -348,7 +375,7 @@ def select_unused_images(count: int = config.IMAGES_PER_VIDEO,
     return selected
 
 
-def mark_images_used(images: List[Dict]):
+def mark_images_used(images: List[Dict], column: str = 'used'):
     """
     Mark selected images used in whichever goldmine CSV they came from. Adds a 'used'
     column to goldmine2 on first write (it shipped without one), so images stop
@@ -370,15 +397,15 @@ def mark_images_used(images: List[Dict]):
         if not rows:
             continue
         fieldnames = list(fieldnames or rows[0].keys())
-        if 'used' not in fieldnames:
-            fieldnames.append('used')
+        if column not in fieldnames:
+            fieldnames.append(column)
         n = 0
         for row in rows:
-            row.setdefault('used', '')
+            row.setdefault(column, '')
             if row.get('image_url') in used_urls:
                 # Date-stamped (not 'TRUE') so _row_is_available can recycle
                 # this row after the IMG_REUSE_DAYS cooldown.
-                row['used'] = mark_for[row['image_url']]
+                row[column] = mark_for[row['image_url']]
                 n += 1
         if n:
             try:

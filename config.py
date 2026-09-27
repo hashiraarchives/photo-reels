@@ -318,3 +318,17 @@ AUTO_FIRST_COMMENT = True
 # published at all, and how many candidate rows to line up per short.
 SHORT_MIN_CLIPS = 10
 SHORT_CANDIDATE_MULT = 3.0
+
+# Shorts personality (2026-09-27). Humor hook on the opening frames, a real
+# quote from the featured star mid-way (star_data.QUOTES: sourced film lines
+# only), and the star bar for a 13-photo short. Flip to False to disable.
+SHORT_HUMOR_HOOKS = True
+SHORT_QUOTE_CARDS = True
+SHORT_STAR_MIN_ROWS = 11
+SHORT_REUSE_DAYS = 14        # cooldown in the shorts-only ledger (short_used)
+# Owner call 2026-09-27: shorts can be mixed reels of many actresses and may
+# reuse long-form photos (shorts keep their own `short_used` ledger). Star
+# shorts become an occasional variety format rather than the goal.
+SHORT_STAR_RATE = 0.3        # share of shorts that TRY to be about one star
+SHORT_WIT_LINES = True       # era-fitting one-liners on a few mid clips
+SHORT_WIT_PER_SHORT = 3
