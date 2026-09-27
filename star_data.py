@@ -340,3 +340,203 @@ def wit_options(name: Optional[str], year: Optional[int]):
     g = star_gender(name) if name else None
     opts += WIT_F if g == 'f' else WIT_M if g == 'm' else []
     return opts + WIT_ANY
+
+
+# --- light details for the formal montage captions --------------------------
+# The channel's best shorts (Jul-Sep 2025, 1.6k-4.8k views) captioned every
+# photo with one calm, factual line: "Ella Raines with Poochie, 1945. Starred
+# in 17 films, including Phantom Lady (1944)". These are the same kind of
+# line: a signature film, an award or a well-known nickname, nothing that
+# needs a citation argument.
+STAR_FACTS = {
+    'marilyn monroe': ["Star of Gentlemen Prefer Blondes (1953)", "Starred in Some Like It Hot (1959)"],
+    'audrey hepburn': ["Won the Best Actress Oscar for Roman Holiday (1953)", "Holly Golightly in Breakfast at Tiffany's (1961)"],
+    'grace kelly': ["Became Princess of Monaco in 1956", "Won the Best Actress Oscar for The Country Girl (1954)"],
+    'elizabeth taylor': ["Two-time Best Actress Oscar winner", "Starred as Cleopatra (1963)"],
+    'rita hayworth': ["Hollywood's 'Love Goddess'", "Unforgettable in Gilda (1946)"],
+    'ava gardner': ["Breakout role in The Killers (1946)", "Starred in Mogambo (1953)"],
+    'bette davis': ["Two-time Best Actress Oscar winner", "Starred in All About Eve (1950)"],
+    'joan crawford': ["Won the Best Actress Oscar for Mildred Pierce (1945)"],
+    'ginger rogers': ["Fred Astaire's most famous dance partner", "Won the Best Actress Oscar for Kitty Foyle (1940)"],
+    'katharine hepburn': ["Won a record four Best Actress Oscars"],
+    'vivien leigh': ["Scarlett O'Hara in Gone with the Wind (1939)", "Two-time Best Actress Oscar winner"],
+    'ingrid bergman': ["Ilsa in Casablanca (1942)", "Three-time Oscar winner"],
+    'sophia loren': ["Won an Oscar for Two Women (1960)"],
+    'brigitte bardot': ["A sensation in And God Created Woman (1956)"],
+    'lauren bacall': ["Famous for 'The Look'", "Debuted opposite Bogart in To Have and Have Not (1944)"],
+    'gene tierney': ["Starred in Laura (1944)"],
+    'veronica lake': ["Famous for her 'peekaboo' hairstyle", "Starred in Sullivan's Travels (1941)"],
+    'lana turner': ["Hollywood's 'Sweater Girl'", "Starred in The Postman Always Rings Twice (1946)"],
+    'dorothy lamour': ["Famous for her sarong in The Jungle Princess (1936)", "Co-starred in the Road films with Hope and Crosby"],
+    'hedy lamarr': ["Co-invented frequency-hopping radio technology (1942)", "Starred in Samson and Delilah (1949)"],
+    'carole lombard': ["Queen of the screwball comedy", "Starred in My Man Godfrey (1936)"],
+    'jean harlow': ["Hollywood's original 'Blonde Bombshell'", "Starred in Red Dust (1932)"],
+    'mae west': ["Starred in She Done Him Wrong (1933)"],
+    'barbara stanwyck': ["Starred in Double Indemnity (1944)"],
+    'claudette colbert': ["Won the Best Actress Oscar for It Happened One Night (1934)"],
+    'irene dunne': ["Starred in The Awful Truth (1937)"],
+    'myrna loy': ["Nora Charles in The Thin Man (1934)"],
+    'natalie wood': ["Starred in West Side Story (1961)", "Starred in Rebel Without a Cause (1955)"],
+    'jane russell': ["Starred in The Outlaw (1943)", "Co-starred with Marilyn in Gentlemen Prefer Blondes (1953)"],
+    'jayne mansfield': ["Starred in The Girl Can't Help It (1956)"],
+    'rita moreno': ["Won an Oscar for West Side Story (1961)"],
+    'kim novak': ["Starred in Hitchcock's Vertigo (1958)"],
+    'doris day': ["Starred in Pillow Talk (1959)"],
+    'judy garland': ["Dorothy in The Wizard of Oz (1939)"],
+    'bettie page': ["The 1950s 'Queen of Pinups'"],
+    'teresa wright': ["Won an Oscar for Mrs. Miniver (1942)"],
+    'glenda farrell': ["Played reporter Torchy Blane in the 1930s"],
+    'bebe daniels': ["Silent star who later headlined 42nd Street (1933)"],
+    'greta garbo': ["MGM's legendary Swedish star", "Starred in Ninotchka (1939)"],
+    'marlene dietrich': ["Starred in The Blue Angel (1930)"],
+    'louise brooks': ["Famous for her bob in Pandora's Box (1929)"],
+    'clara bow': ["Hollywood's original 'It Girl'"],
+    'lillian gish': ["The 'First Lady of American Cinema'", "Starred in Broken Blossoms (1919)"],
+    'mary pickford': ["Known as 'America's Sweetheart'", "Co-founded United Artists (1919)"],
+    'betty grable': ["Her swimsuit photo was WWII's most famous pinup"],
+    'norma shearer': ["Won the Best Actress Oscar for The Divorcee (1930)"],
+    'gloria swanson': ["Norma Desmond in Sunset Boulevard (1950)"],
+    'olivia de havilland': ["Melanie in Gone with the Wind (1939)", "Two-time Best Actress Oscar winner"],
+    'joan fontaine': ["Won the Best Actress Oscar for Suspicion (1941)"],
+    'loretta young': ["Won the Best Actress Oscar for The Farmer's Daughter (1947)"],
+    'paulette goddard': ["Starred with Chaplin in Modern Times (1936)"],
+    'ann sheridan': ["Hollywood's 'Oomph Girl'"],
+    'susan hayward': ["Won the Best Actress Oscar for I Want to Live! (1958)"],
+    'esther williams': ["Star of Million Dollar Mermaid (1952)"],
+    'cyd charisse': ["Danced with Gene Kelly in Singin' in the Rain (1952)"],
+    'linda darnell': ["Starred in Forever Amber (1947)"],
+    'jeanne crain': ["Starred in State Fair (1945)"],
+    'kay francis': ["Starred in Trouble in Paradise (1932)"],
+    'jean arthur': ["Starred in Mr. Smith Goes to Washington (1939)"],
+    'rosalind russell': ["Starred in His Girl Friday (1940)"],
+    'donna reed': ["Mary Bailey in It's a Wonderful Life (1946)"],
+    'deborah kerr': ["Starred in From Here to Eternity (1953)", "Anna in The King and I (1956)"],
+    'janet leigh': ["Starred in Hitchcock's Psycho (1960)"],
+    'anne baxter': ["Eve in All About Eve (1950)"],
+    "maureen o'hara": ["Starred in The Quiet Man (1952)", "Hollywood's 'Queen of Technicolor'"],
+    'anita ekberg': ["The Trevi Fountain scene in La Dolce Vita (1960)"],
+    'gina lollobrigida': ["Italian star of Trapeze (1956)"],
+    'debbie reynolds': ["Starred in Singin' in the Rain (1952)"],
+    'constance bennett': ["Starred in Topper (1937)"],
+    'miriam hopkins': ["Starred in Trouble in Paradise (1932)"],
+    'sylvia sidney': ["Starred in Fury (1936)"],
+    'alice faye': ["Top musical star at 20th Century Fox"],
+    'betty hutton': ["Starred in Annie Get Your Gun (1950)"],
+    'eleanor powell': ["Tap-dancing star of Broadway Melody of 1940"],
+    'joan bennett': ["Starred in Scarlet Street (1945)"],
+    'dolores del rio': ["One of Hollywood's first Latin American stars"],
+    'ann-margret': ["Starred with Elvis in Viva Las Vegas (1964)"],
+    'barbara eden': ["Starred in I Dream of Jeannie (1965-70)"],
+    'tina louise': ["Ginger on Gilligan's Island (1964-67)"],
+    'angie dickinson': ["Starred in Rio Bravo (1959)"],
+    'julie newmar': ["Catwoman in the 1960s Batman series"],
+    'raquel welch': ["Starred in One Million Years B.C. (1966)"],
+    'lucille ball': ["Starred in I Love Lucy (1951-57)"],
+    'dorothy dandridge': ["First Black woman nominated for Best Actress, Carmen Jones (1954)"],
+    'lena horne': ["Starred in Stormy Weather (1943)"],
+    'fay wray': ["Starred in King Kong (1933)"],
+    'anna may wong': ["Hollywood's first Chinese American star", "Starred in Shanghai Express (1932)"],
+    'theda bara': ["Silent cinema's original 'Vamp'"],
+    'colleen moore': ["The flapper star of Flaming Youth (1923)"],
+    'marion davies': ["Silent comedy star of Show People (1928)"],
+    'ida lupino': ["Actress and pioneering film director"],
+    'merle oberon': ["Starred in Wuthering Heights (1939)"],
+    'gloria grahame': ["Won an Oscar for The Bad and the Beautiful (1952)"],
+    'jean simmons': ["Starred in Guys and Dolls (1955)"],
+    'eva marie saint': ["Won an Oscar for On the Waterfront (1954)"],
+    'yvonne de carlo': ["Lily in The Munsters (1964-66)"],
+    'virginia mayo': ["Starred in The Best Years of Our Lives (1946)"],
+    'rhonda fleming': ["Starred in Gunfight at the O.K. Corral (1957)"],
+    'mamie van doren': ["1950s blonde star of Untamed Youth (1957)"],
+    'shirley maclaine': ["Won an Oscar for Terms of Endearment (1983)"],
+    'cary grant': ["Starred in North by Northwest (1959)"],
+    'clark gable': ["Rhett Butler in Gone with the Wind (1939)", "Won an Oscar for It Happened One Night (1934)"],
+    'humphrey bogart': ["Rick in Casablanca (1942)", "Won an Oscar for The African Queen (1951)"],
+    'james dean': ["Starred in Rebel Without a Cause (1955)"],
+    'gary cooper': ["Won Oscars for Sergeant York and High Noon"],
+    'errol flynn': ["Starred in The Adventures of Robin Hood (1938)"],
+    'gregory peck': ["Won an Oscar as Atticus Finch (1962)"],
+    'marlon brando': ["Won Oscars for On the Waterfront and The Godfather"],
+    'james stewart': ["Starred in It's a Wonderful Life (1946)", "Flew bombing missions in WWII"],
+    'spencer tracy': ["Won back-to-back Best Actor Oscars (1937, 1938)"],
+    'tyrone power': ["Starred in The Mark of Zorro (1940)"],
+    'robert mitchum': ["Starred in The Night of the Hunter (1955)"],
+    'kirk douglas': ["Starred in Spartacus (1960)"],
+    'burt lancaster': ["Starred in From Here to Eternity (1953)"],
+    'rock hudson': ["Starred with Doris Day in Pillow Talk (1959)"],
+    'paul newman': ["Starred in Butch Cassidy and the Sundance Kid (1969)"],
+    'frank sinatra': ["Won an Oscar for From Here to Eternity (1953)"],
+    'fred astaire': ["Danced with Ginger Rogers in Top Hat (1935)"],
+    'gene kelly': ["Starred in Singin' in the Rain (1952)"],
+    'steve mcqueen': ["Starred in The Great Escape (1963)"],
+    'tony curtis': ["Starred in Some Like It Hot (1959)"],
+    'william holden': ["Won an Oscar for Stalag 17 (1953)"],
+    'henry fonda': ["Starred in The Grapes of Wrath (1940)"],
+    'alan ladd': ["Starred in Shane (1953)"],
+    'glenn ford': ["Starred opposite Rita Hayworth in Gilda (1946)"],
+    'montgomery clift': ["Starred in A Place in the Sun (1951)"],
+    'charlton heston': ["Won an Oscar for Ben-Hur (1959)"],
+    'dean martin': ["Rat Pack member and star of Rio Bravo (1959)"],
+    'john wayne': ["Won an Oscar for True Grit (1969)"],
+    'buster keaton': ["Silent comedy genius of The General (1926)"],
+    'charlie chaplin': ["Created the Little Tramp"],
+    'rudolph valentino': ["The silent era's 'Latin Lover', star of The Sheik (1921)"],
+    'douglas fairbanks': ["Co-founded United Artists (1919)"],
+    'robert taylor': ["Starred in Quo Vadis (1951)"],
+    'bing crosby': ["Won an Oscar for Going My Way (1944)"],
+    'richard burton': ["Starred in Cleopatra (1963)"],
+    'victor mature': ["Starred in Samson and Delilah (1949)"],
+    'randolph scott': ["Western star of Ride the High Country (1962)"],
+    'james garner': ["Starred in Maverick (1957-62)"],
+    'audie murphy': ["Decorated WWII hero turned film star"],
+    'lon chaney': ["Starred in The Phantom of the Opera (1925)"],
+    'erich von stroheim': ["Directed the silent epic Greed (1924)"],
+    'gene autry': ["Hollywood's 'Singing Cowboy'"],
+}
+
+
+def facts_for(name: str):
+    return STAR_FACTS.get(_ALIASES.get(_key(name), _key(name)), [])
+
+
+import re as _re
+_JUNK = _re.compile(r'\.(jpe?g|png|tiff?|webp)|_|file:|sayre|\d{5,}|nrfpt|annex', _re.I)
+
+
+def montage_caption(name, year, raw_caption: str = '', seed: int = 0, quote=None) -> str:
+    """One formal caption for a photo, in the house style of the channel's
+    best shorts: "Rita Hayworth, 1946. Hollywood's 'Love Goddess'."
+    A quote (text, source) replaces the fact when given. Returns '' when we
+    can't say anything reliable about the photo."""
+    if name:
+        head = f"{name}, {year}." if year else f"{name}."
+        if quote:
+            src = _re.sub(r'\s*\((\d{4})\)$', r', \1', quote[1])
+            return f"{head} “{quote[0].rstrip()}” ({src})"
+        facts = facts_for(name)
+        return f"{head} {facts[seed % len(facts)]}." if facts else head
+    # Unnamed photo: archive captions are messy ("Dorothy Dalton Who's Who on
+    # the Screen corp (1920)"), so keep only a leading person's name and a
+    # year -- "Dorothy Dalton, 1920." -- or say nothing.
+    raw = (raw_caption or '').strip()
+    m = _re.match(r"([A-Z][a-z'\-]+(?:\s(?:de|del|van|von|la|le)?\s?[A-Z][a-z'\-]+){1,2})", raw)
+    y = _re.search(r'\b(18[89]\d|19[0-8]\d)\b', raw)
+    if not (m and y) or _JUNK.search(raw):
+        return ''
+    words = m.group(1).split()
+    while words and words[-1].rstrip("'s") in _NOT_A_NAME:
+        words.pop()
+    if len(words) < 2 or any(w in _NOT_A_NAME for w in words):
+        return ''
+    return f"{' '.join(words)}, {y.group(1)}."
+
+
+_NOT_A_NAME = {
+    'Who', "Who's", 'Portrait', 'Publicity', 'Photo', 'Photograph', 'Studio',
+    'Studios', 'Pictures', 'Picture', 'Company', 'Corporation', 'Theatre',
+    'Theater', 'Film', 'Films', 'Hotel', 'Street', 'Avenue', 'Hollywood',
+    'California', 'Magazine', 'Screen', 'Movie', 'Movies', 'Productions',
+    'Warner', 'Paramount', 'Universal', 'Columbia', 'Metro', 'In', 'On', 'The',
+    'At', 'And', 'With', 'From', 'For', 'Of', 'A', 'An', 'New', 'York', 'Los',
+    'Angeles', 'Scene', 'Still', 'Actress', 'Actor', 'Miss', 'Mrs', 'Mr',
+}

@@ -65,9 +65,9 @@ SHORTS_PER_DAY = 4           # owner asked for 2-4; 4 once Actions minutes becam
 SHORT_WIDTH = 1080
 SHORT_HEIGHT = 1920
 SHORT_IMAGE_COUNT = 13       # 3x3s + 10x5s - xfade overlap = ~56s
-SHORT_IMAGE_DURATION = 5.0
-SHORT_HOOK_CLIPS = 3         # first N images play faster to hook the scroll
-SHORT_HOOK_DURATION = 3.0
+SHORT_IMAGE_DURATION = 4.6   # long enough to read one caption (formal montage)
+SHORT_HOOK_CLIPS = 1         # a single quicker opener (3x3s was unreadable with captions)
+SHORT_HOOK_DURATION = 3.5
 SHORT_MUSIC_START = (18, 45) # random offset window so tracks don't all open alike
 SHORT_KENBURNS = True
 # A short needs only ~17 rows, so it can afford to take them all from the
@@ -332,3 +332,14 @@ SHORT_REUSE_DAYS = 14        # cooldown in the shorts-only ledger (short_used)
 SHORT_STAR_RATE = 0.3        # share of shorts that TRY to be about one star
 SHORT_WIT_LINES = True       # era-fitting one-liners on a few mid clips
 SHORT_WIT_PER_SHORT = 3
+
+# FORMAL MONTAGE (owner, 2026-09-28): the channel's best shorts (Jul-Sep 2025,
+# 1.6k-4.8k views) showed the WHOLE photo on black with one centred caption
+# per photo (name, year, light detail), ran ~55s on "Soul and Mind - E's Jammy
+# Jams", and had short Title Case titles. 'montage' reproduces that; 'playful'
+# brings back the humor hook / one-liners / lower name plate of 2026-09-27.
+SHORT_LAYOUT = 'fit'               # 'fit' = whole photo on black; 'cover' = crop to fill
+SHORT_CAPTION_STYLE = 'montage'    # 'montage' | 'playful'
+SHORT_MUSIC_WEIGHTS = {"Soul and Mind": 6, "Nighttime Stroll": 2}   # others weigh 1
+SHORT_TITLE_STYLE = 'classic'      # 'classic' = 2025 hit formula; 'hooky' = 2026-09 hooks
+LONGFORM_MONTAGE_CAPTIONS = True   # house-style captions for long-form when Gemini is off

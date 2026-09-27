@@ -58,8 +58,20 @@ def compose_vertical_frame(src_path: str, out_path: str) -> bool:
                 bias = 0.16          # portrait: whole head + shoulders
             else:
                 bias = 0.34          # landscape source: favour the upper third
-            img = _cover_crop(img, W, H, bias)
-            img = _grade(img)
+            if getattr(config, 'SHORT_LAYOUT', 'fit') == 'fit':
+                # The channel's best shorts (2025) showed the WHOLE photo,
+                # centred on black: nothing cropped off, a formal montage.
+                scale = min(W / ow, (H * 0.80) / oh)
+                photo = _grade(img.resize((max(1, int(ow * scale)), max(1, int(oh * scale))),
+                                          Image.LANCZOS))
+                canvas = Image.new('RGB', (W, H), (0, 0, 0))
+                top = int(H * 0.46 - photo.height / 2)
+                top = max(int(H * 0.06), min(top, H - photo.height))
+                canvas.paste(photo, ((W - photo.width) // 2, top))
+                img = canvas
+            else:
+                img = _cover_crop(img, W, H, bias)
+                img = _grade(img)
             img.save(out_path, 'JPEG', quality=94)
         return True
     except Exception as e:
@@ -79,6 +91,8 @@ def _esc(text: str) -> str:
 # inside a single-quoted filter argument (the old end-card prompts dodged this
 # by banning apostrophes outright).
 _BAND_TOP, _BAND_BOTTOM = 0.40, 0.70   # below the faces, above the Shorts UI
+# fit layout leaves a black bar above the photo: the question sits there
+_PROMPT_Y = 0.015 if getattr(config, 'SHORT_LAYOUT', 'fit') == 'fit' else 0.52
 
 
 def _wrap(text: str, max_chars: int):
@@ -159,14 +173,17 @@ def _block_filter(block: dict, dirpath: str) -> str:
     ssize, slines = _fit(sub, 56, 44, 2) if sub else (0, [])
     lh, slh = int(size * 1.28), int(ssize * 1.3)
     total = lh * len(lines) + (24 + slh * len(slines) if slines else 0)
-    y0 = int(H * (_BAND_TOP + _BAND_BOTTOM) / 2 - total / 2)
-    y0 = max(int(H * _BAND_TOP), min(y0, int(H * _BAND_BOTTOM) - total))
+    top_f, bot_f = block.get('band', (_BAND_TOP, _BAND_BOTTOM))
+    y0 = int(H * (top_f + bot_f) / 2 - total / 2)
+    y0 = max(int(H * top_f), min(y0, int(H * bot_f) - total))
+    plate = (":box=1:boxcolor=black@0.5:boxborderw=18" if block.get('plate', True)
+             else ":shadowcolor=black@0.85:shadowx=3:shadowy=3")
     out = ''
     for i, ln in enumerate(lines):
         out += (f",drawtext=fontfile='{font}':textfile='{_textfile(dirpath, ln)}'"
                 f":expansion=none:fontcolor=white:fontsize={size}"
                 f":borderw={max(5, size // 10)}:bordercolor=black@0.95"
-                f":box=1:boxcolor=black@0.5:boxborderw=18"
+                f"{plate}"
                 f":x=(w-text_w)/2:y={y0 + i * lh}")
     for j, ln in enumerate(slines):
         out += (f",drawtext=fontfile='{font}':textfile='{_textfile(dirpath, ln)}'"
@@ -187,10 +204,12 @@ def _render_clip(frame_path: str, out_path: str, duration: float,
     # Upscale 2x before zoompan: zoompan is famously jittery when it steps
     # across a small source, and the extra pixels keep the motion smooth.
     if getattr(config, 'SHORT_KENBURNS', True):
+        zmax = 1.06 if getattr(config, 'SHORT_LAYOUT', 'fit') == 'fit' else 1.15
+        step = (zmax - 1.0) / max(frames, 1)
         if zoom_in:
-            z = "min(zoom+0.0009,1.15)"
+            z = f"min(zoom+{step:.6f},{zmax})"
         else:
-            z = "if(lte(zoom,1.0),1.15,max(1.0,zoom-0.0009))"
+            z = f"if(lte(zoom,1.0),{zmax},max(1.0,zoom-{step:.6f}))"
         motion = (f"scale={W*2}:{H*2},"
                   f"zoompan=z='{z}':d={frames}:x='iw/2-(iw/zoom/2)':"
                   f"y='ih/2-(ih/zoom/2)':s={W}x{H}:fps={FPS}")
@@ -230,11 +249,11 @@ def _render_clip(frame_path: str, out_path: str, duration: float,
         vf += (f",drawtext=fontfile='{font}':text='{_esc(head)}'"
                f":fontcolor=white:fontsize={hsize}:borderw=8:bordercolor=black@0.95"
                f":box=1:boxcolor=black@0.55:boxborderw=24"
-               f":x=(w-text_w)/2:y=h*0.52")
+               f":x=(w-text_w)/2:y=h*{_PROMPT_Y}")
         if sub:
             vf += (f",drawtext=fontfile='{font}':text='{_esc(sub)}'"
                    f":fontcolor=0xFFD66B:fontsize={ssize}:borderw=7:bordercolor=black@0.95"
-                   f":x=(w-text_w)/2:y=h*0.52+{hsize + 58}")
+                   f":x=(w-text_w)/2:y=h*{_PROMPT_Y}+{hsize + 58}")
 
     cmd = [config.FFMPEG_PATH, '-y', '-loop', '1', '-i', frame_path,
            '-t', f'{duration:.2f}', '-vf', vf,
@@ -259,7 +278,17 @@ def _build_audio(total_duration: float, temp_dir: str) -> Optional[str]:
     if not tracks:
         print("    no music files found — rendering silent")
         return None
-    track = random.choice(tracks)
+    # The channel's best shorts ran on "Soul and Mind - E's Jammy Jams";
+    # weight toward it (and its sibling track) instead of a flat draw.
+    weights = []
+    for t in tracks:
+        w = 1.0
+        for key, wt in getattr(config, 'SHORT_MUSIC_WEIGHTS', {}).items():
+            if key.lower() in os.path.basename(t).lower():
+                w = float(wt)
+                break
+        weights.append(w)
+    track = random.choices(tracks, weights=weights, k=1)[0]
     lo, hi = getattr(config, 'SHORT_MUSIC_START', (18, 45))
     # Clamp the seek to what the track can actually supply. Seeking past the end
     # makes ffmpeg emit an empty stream and the short ships SILENT — which is
@@ -459,7 +488,7 @@ def generate_short(theme: Optional[str] = None) -> Optional[str]:
         plan = _plan_wording(clips, focus_star, hook_n, last_i)
         plates, blocks, extra = plan['plates'], plan['blocks'], plan['extra_secs']
         print(f"  hook: {plan['hook']!r} | quote: {plan['quote'][0] if plan['quote'] else None!r}"
-              f" | named clips: {sum(1 for v in plates.values() if v)}/{len(clips)}")
+              f" | captioned: {len(plan.get('captions') or blocks)}/{len(clips)}")
 
         clip_paths, durations = [], []
         for i, c in enumerate(clips):
@@ -543,6 +572,7 @@ def generate_short(theme: Optional[str] = None) -> Optional[str]:
                 'hook': plan['hook'],
                 'quote': list(plan['quote']) if plan['quote'] else None,
                 'names': plan['names'],
+                'captions': plan.get('captions', {}),
                 'wit': plan['wit'],
                 'image_count': len(clip_paths),
                 'duration_seconds': dur,
@@ -596,6 +626,13 @@ def _clip_year(c: dict, name: Optional[str]) -> Optional[int]:
     return None
 
 
+def _smart_quotes(text: str) -> str:
+    """Typographer's apostrophes: 'Love Goddess' gets an opening and a closing
+    mark instead of two closing ones."""
+    text = re.sub(r"(^|[\s(“])'", lambda m: m.group(1) + "‘", text)
+    return text.replace("'", "’")
+
+
 def _plan_wording(clips, focus_star: str, hook_n: int, last_i: int) -> dict:
     """Per-clip on-screen wording for one short.
 
@@ -624,6 +661,41 @@ def _plan_wording(clips, focus_star: str, hook_n: int, last_i: int) -> dict:
             plates[i] = name.upper() + (f" \u00b7 {years[i]}" if years[i] else '')
 
     blocks, extra = {}, {}
+
+    if getattr(config, 'SHORT_CAPTION_STYLE', 'montage') == 'montage':
+        # FORMAL MONTAGE (owner, 2026-09-28, from the channel's own 2025 hits):
+        # one calm, centred caption per photo -- name, year, a light detail --
+        # white with a shadow, no plate, no jokes stacked on top. At most one
+        # quote, used as that photo's detail. The caption carries the name,
+        # so there is no separate lower-third plate.
+        quote = None
+        seed = random.randrange(1000)
+        for i, c in enumerate(clips):
+            name, q = who.get(i), None
+            if (quote is None and name and 0 < i < last_i
+                    and getattr(config, 'SHORT_QUOTE_CARDS', True)):
+                fresh = [x for x in sd.quotes_for(name) if x[0] not in recent_q]
+                if fresh and random.random() < 0.7:
+                    q = random.choice(fresh)
+                    quote = (q[0], q[1], name)
+            text = sd.montage_caption(name, years.get(i), c.get('caption') or '',
+                                      seed=seed + i, quote=q)
+            if not text:
+                continue
+            blocks[i] = {'text': _smart_quotes(text), 'size': 64, 'min_size': 46,
+                         'max_lines': 4, 'plate': False, 'band': (0.58, 0.76)}
+            if q:
+                extra[i] = max(0.0, min(2.0, len(text) / 14.0 - 4.6))
+        led['quotes'] = (led.get('quotes', []) + ([quote[0]] if quote else []))[-100:]
+        try:
+            with open(_PACK_LEDGER, 'w', encoding='utf-8') as f:
+                json.dump(led, f, indent=1, ensure_ascii=False)
+        except Exception as e:
+            print(f"  packaging ledger not saved: {e}")
+        names = list(dict.fromkeys(n for n in who.values() if n))
+        return {'plates': {}, 'blocks': blocks, 'extra_secs': extra,
+                'hook': '', 'quote': quote, 'names': names, 'wit': [],
+                'captions': {i: b['text'] for i, b in blocks.items()}}
 
     # 1) humor hook over the opening frames (first 2 clips)
     hook = ''

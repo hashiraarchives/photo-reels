@@ -48,6 +48,10 @@ _JUNK_TERMS = (
     'magazine', 'sheet music', 'cigarette card', 'trading card', 'postcard',
     'caricature', 'cartoon', 'title card', 'logo', 'advert', 'advertis',
     'front cover', 'back cover', 'dust jacket', 'diagram', 'map of',
+    # Periodicals: a whole "I Love Lucy (TV Guide, 1954)" page reached a short.
+    'tv guide', 'photoplay', 'picture play', 'picture-play', 'screenland',
+    'modern screen', 'movie weekly', 'film fun', 'shadowland', 'newspaper',
+    'clipping', 'motion picture news', 'exhibitor',
 )
 
 
@@ -1198,6 +1202,39 @@ def generate_personalized_voiceover(images: List[Dict], theme: str) -> Optional[
     return get_intro_voice()
 
 
+def _montage_long_captions(images: List[Dict]) -> None:
+    """Without Gemini, captions are raw archive text. Rewrite the ones we can
+    identify in the house style of the channel's best shorts (owner,
+    2026-09-28): "Rita Hayworth, 1946. Hollywood's 'Love Goddess'." A star's
+    light details are used on their first appearances only; later photos of
+    the same star get name, film and year, so a star episode doesn't repeat
+    one fact fifteen times. Unidentified photos keep their existing caption."""
+    import star_data as sd
+    seen: Dict[str, int] = {}
+    n_done = 0
+    for img in images:
+        raw = img.get('generated_caption') or ''
+        name = sd.identify(img.get('image_filename'), img.get('source_category'), raw)
+        if not name:
+            continue
+        year = None
+        for field in (raw, img.get('image_filename') or '', img.get('date') or ''):
+            m = re.search(r'\b(18[89]\d|19[0-8]\d)\b', str(field))
+            if m and sd.plausible_year(name, int(m.group(1))):
+                year = int(m.group(1))
+                break
+        k = seen.get(name, 0)
+        seen[name] = k + 1
+        if k < len(sd.facts_for(name)):
+            img['generated_caption'] = sd.montage_caption(name, year, seed=k)
+        else:
+            film = re.search(r'in "([^"]+)"', raw)
+            film = f' in "{film.group(1)}"' if film else ''
+            img['generated_caption'] = f"{name}{film}, {year}." if year else f"{name}{film}."
+        n_done += 1
+    print(f"  Montage captions: {n_done}/{len(images)} photos identified and captioned")
+
+
 def create_video(images: List[Dict], output_path: str, theme: str = "Classic_Hollywood",
                  target_count: Optional[int] = None):
     """
@@ -1741,6 +1778,8 @@ def generate_video(image_count: int = config.IMAGES_PER_VIDEO, theme: str = None
     # Step 2: Scrape descriptions
     print("\n[Step 2] Scraping descriptions from Wikimedia...")
     images = scrape_batch(images)
+    if not getattr(config, 'GEMINI_API_KEY', None) and getattr(config, 'LONGFORM_MONTAGE_CAPTIONS', True):
+        _montage_long_captions(images)
 
     # Step 3: Create video
     output_filename = f"AAP_{datetime.now().strftime('%Y-%m-%d')}_{theme}.mp4"

@@ -548,7 +548,7 @@ Travel back in time through a stunning archive of vintage actresses, legendary a
 
 ✨ What You'll Discover on This Channel:
 📸 Rare portraits and candid behind-the-scenes photos
-🎞️ Colorized classics of Hollywood's golden generation
+🎞️ Colorized classics of Hollywood’s golden generation
 📸 Iconic pinup photography from the 1940s–1960s
 🎞️ Forgotten stars and the fascinating stories behind them
 📸 Curated slideshows and reels set to nostalgic soundtracks
@@ -595,6 +595,13 @@ def build_description(metadata: Dict, title: str = "") -> str:
         (f"Step back into a world of studio lights and satin gowns. {lead_name} and the "
          f"legends of the golden age, captured in {image_count} rare photos most fans "
          f"have never seen — restored and presented in cinematic quality."),
+        # The opening line of the channel's best shorts (owner, 2026-09-28).
+        (f"This is what real Hollywood glamour looked like... Notice the sophisticated "
+         f"styling and timeless beauty of {lead_name} and the stars of Golden Age cinema "
+         f"{decade}. Who remembers this era?"),
+        (f"Step into the Golden Age of cinema, where sophistication and glamour reigned "
+         f"supreme. Notice the impeccable styling of {names} {decade}. Who else remembers "
+         f"this iconic period in Hollywood history?"),
     ]
 
     # — Emoji-headed SEO sections (competitor pattern), rotated for variety
@@ -659,7 +666,7 @@ def build_description(metadata: Dict, title: str = "") -> str:
     tags_line = (tags_line + ' #OldHollywood #VintagePhotos').strip()
 
     parts = ([title, ""] if title else []) + [
-        hooks[seed % 3], "",
+        hooks[seed % len(hooks)], "",
         question, "",
     ]
     if roll_line:
@@ -690,7 +697,7 @@ def generate_tags(metadata: Dict, gemini_tags: List[str] = None) -> List[str]:
     # Trimmed to YouTube's 500-char limit (chars + 2 per multi-word tag for quotes + commas).
     # Distinctive / curiosity / rarity tags first so they survive the 500-char trim;
     # near-duplicate generic terms last (those drop first if budget is tight).
-    core_tags = [
+    core_tags = list(PROVEN_TAGS) + [
         "actress actor and pinups",
         "rare photos", "rare vintage photos", "unseen photos",
         "glamour photos", "vintage beauty", "vintage actresses",
@@ -808,6 +815,10 @@ def upload_video(
         'status': {
             'privacyStatus': effective_privacy,
             'selfDeclaredMadeForKids': False,
+            # Owner's Studio setting: "altered or synthetic content" = No.
+            # Automatic chapters / places / concepts have no API field; they
+            # stay at YouTube's default, which is on.
+            'containsSyntheticMedia': False,
         }
     }
 
@@ -1222,6 +1233,81 @@ def _star_year(metadata: Dict, star: str) -> str:
     return ''
 
 
+# Tags on every one of the channel's best shorts (Jul-Sep 2025), supplied by
+# the owner 2026-09-28. Exactly 497 of YouTube's 500 tag characters, so it is
+# used as-is for Shorts; long-form puts its star names first and trims the tail.
+PROVEN_TAGS = [
+    "1900s", "1920s", "1950s", "1960s", "1970s", "actor", "actress", "amazing",
+    "amazing historical photos", "beautiful", "black and white photography",
+    "historic", "historic photos", "historical", "historical photos", "history",
+    "hollywood", "men", "nostalgia", "old photos", "old photos from the past",
+    "old vintage photos", "past photos", "photo of the past", "pinups",
+    "rare historical photos", "rare history", "rare old photos",
+    "selection of photos", "sexy", "vintage collection", "vintage photography",
+    "vintage photos", "vintage pictures", "vintage story", "women",
+]
+
+# CLASSIC short titles: the formula of the channel's best shorts ever --
+# "Rare Glimpse of Legendary Actresses" 3,969 views, "Timeless Elegance of
+# Hollywood Legends" 3,251, "Unseen Actress Glamour in Old Photos" 2,713.
+# Short (4-7 words), Title Case, no star name on a mixed reel, no #Shorts.
+_CLASSIC_PATTERNS = [
+    "Rare Glimpse of {group}", "Timeless Elegance of {group}",
+    "{group} in Stunning Glimpses", "{group} in Stunning Old Photos",
+    "Unseen Photos of {group} from the Past", "{group} Frozen in Rare Moments",
+    "{group} of Hollywood's Golden Age", "{group} Caught in Rare Photos",
+    "{group} Captured in Rare Moments", "Most Beautiful {plural} in Rare Moments",
+    "Unseen {noun} Glamour in Old Photos", "Vintage {noun} Moments You've Never Seen",
+    "Rare Vintage {noun} Moments", "Quick Glimpse at Old Hollywood Glamour",
+    "Icons in Time: Stunning Vintage Photos of {group}",
+]
+_CLASSIC_GROUPS_F = ["Legendary Actresses", "Beautiful Actresses", "Glamorous Actresses",
+                     "Classic Beauties", "Golden Age Actresses", "Hollywood's Leading Ladies"]
+_CLASSIC_GROUPS_MIX = ["Hollywood Legends", "Vintage Hollywood Stars", "Golden Age Stars",
+                       "Classic Film Stars", "Hollywood Icons"]
+_CLASSIC_STAR = ["Rare Glimpse of {star}", "{star} in Stunning Old Photos",
+                 "Timeless Elegance of {star}", "{star} Frozen in Rare Moments",
+                 "Unseen Photos of {star}"]
+
+
+def _classic_short_titles(metadata: Dict, seed: int) -> List[str]:
+    import star_data as sd
+    star = (metadata.get('focus_star') or '').strip()
+    if star:
+        cands = [t.format(star=star) for t in _CLASSIC_STAR]
+        # "Rita Hayworth: WWII Pinup Girl" is the channel's #1 short ever
+        # (4,795 views): name + a short nickname-style tag line.
+        cands = [cands[(seed + i) % len(cands)] for i in range(len(cands))]
+        for f in sd.facts_for(star):
+            # nickname facts only ("Hollywood's 'Love Goddess'"): drop the
+            # quote marks around the nickname, keep the possessive apostrophe
+            if re.search(r"(?<=\s)'[^']+'", f) and len(star) + len(f) <= 50:
+                nick = re.sub(r"(?<=\s)'([^']+)'", lambda m: m.group(1), f)
+                cands.insert(0, f"{star}: {nick}")
+        return cands
+    names = metadata.get('names') or []
+    genders = [sd.star_gender(n) for n in names]
+    known = [g for g in genders if g]
+    female = not known or sum(g == 'f' for g in known) >= 0.75 * len(known)
+    groups = _CLASSIC_GROUPS_F if female else _CLASSIC_GROUPS_MIX
+    noun = "Actress" if female else "Hollywood"
+    plural = "Actresses" if female else "Hollywood Stars"
+    def _clunky(t: str) -> bool:
+        # "Hollywood Icons of Hollywood's Golden Age", "Vintage Photos of
+        # Vintage Hollywood Stars": a content word used twice reads as filler.
+        words = [re.sub(r"'s$", '', w).lower() for w in re.findall(r"[A-Za-z']+", t)]
+        words = [w for w in words if len(w) > 3]
+        return len(words) != len(set(words))
+    cands = []
+    for i, pat in enumerate(_CLASSIC_PATTERNS):
+        for k in range(len(groups)):          # first group that reads cleanly
+            t = pat.format(group=groups[(seed + i + k) % len(groups)], noun=noun, plural=plural)
+            if not _clunky(t):
+                cands.append(t)
+                break
+    return [cands[(seed * 7 + i) % len(cands)] for i in range(len(cands))]
+
+
 def build_short_title(metadata: Dict) -> str:
     """Punchy vertical-format title. <= ~70 chars including the tag.
 
@@ -1232,6 +1318,12 @@ def build_short_title(metadata: Dict) -> str:
     import star_data as sd
     star = (metadata.get('focus_star') or '').strip()
     seed = _video_seed(metadata)
+    tail = " #Shorts" if getattr(config, 'SHORT_TITLE_HASHTAG', False) else ""
+
+    if getattr(config, 'SHORT_TITLE_STYLE', 'classic') == 'classic':
+        cands = _classic_short_titles(metadata, seed)
+        cand = next((c for c in cands if not is_title_too_similar(c)), cands[0])
+        return f"{cand}{tail}"[:99]
 
     if star:
         g = sd.star_gender(star)
@@ -1267,57 +1359,47 @@ def build_short_title(metadata: Dict) -> str:
                          f'"{q[0].rstrip(".")}" and more Golden Age magic')
 
     cand = next((c for c in cands if not is_title_too_similar(c)), cands[0])
-    return f"{cand} #Shorts"[:99]
+    return f"{cand}{tail}"[:99]
 
 
 def build_short_description(metadata: Dict) -> str:
-    """Compact, keyword-rich description with the hashtags Shorts rely on."""
+    """The description format of the channel's best shorts (owner, 2026-09-28):
+    ONE short hook paragraph -- a statement, a "Notice..." line, a question --
+    then the channel's welcome block. The #3 hit named its stars in that
+    paragraph; names are search terms, so they go in when we have them."""
+    import star_data as sd
     star = (metadata.get('focus_star') or '').strip()
-    decade = extract_decade_range(metadata)
-    who = star or "classic Hollywood's most beautiful stars"
-    names = [n for n in (metadata.get('names') or []) if n != star]
-    first = star or (names[0] if names else '')
-    tag_star = ('#' + re.sub(r"[^A-Za-z]", '', first)) if first else ''
-    question = build_first_comment(star, seed=_video_seed(metadata))
+    names = metadata.get('names') or []
+    seed = _video_seed(metadata)
     q = metadata.get('quote') or []
-    lines = [
-        f"✨ Rare vintage photographs of {who} {decade} — restored glamour from "
-        f"the golden age of Hollywood.",
-        "",
+    listed = ", ".join(names[:6])
+    hooks = [
+        "This is what real Hollywood glamour looked like... Notice the sophisticated "
+        "styling and timeless beauty of Golden Age cinema. Who remembers this era?",
+        "Step into the Golden Age of cinema, where sophistication and glamour reigned "
+        "supreme. Notice the impeccable styling and timeless beauty of a bygone era. "
+        "Who else remembers this iconic period in Hollywood history?",
+        "Rare photographs from the days when Hollywood truly sparkled. Notice the "
+        "lighting, the gowns and the effortless elegance. Which star do you remember best?",
     ]
-    if q:
-        said_by = q[2] if len(q) > 2 else star
-        lines += [f"🎬 \u201c{q[0]}\u201d \u2014 {said_by}, {q[1]}", ""]
-    if names and not star:
-        lines += ["⭐ Featuring: " + ", ".join(names[:8]), ""]
-    lines += [
-        f"💬 {question}",
-        "",
-        "🎞️ A quiet minute of old Hollywood for everyone who still loves the "
-        "classics. New rare photos every day — subscribe so you never miss one.",
-        "",
-        f"#Shorts #OldHollywood #VintagePhotos #ClassicHollywood #GoldenAge "
-        f"#Glamour #RarePhotos #Nostalgia {tag_star}".strip(),
-    ]
-    return "\n".join(lines)
+    if len(names) >= 3:
+        hooks.append(f"Celebrating the sophistication and glamour of classic cinema's most "
+                     f"iconic stars, including {listed}. Who was your favorite?")
+    if star:
+        facts = sd.facts_for(star)
+        pron = {'f': 'her', 'm': 'him'}.get(sd.star_gender(star) or '', 'them')
+        lead = f"{star}: {facts[0].rstrip('.')}." if facts else f"{star}, a true Golden Age legend."
+        hooks = [f"{lead} Check out these rare photos of {pron} from Hollywood's golden age! "
+                 f"Who remembers {star}?"]
+    elif q and len(q) > 2:
+        hooks.append(f"\u201c{q[0]}\u201d {q[2]} and more Golden Age stars in rare "
+                     f"photographs. Notice the timeless glamour of a bygone era. Who remembers this era?")
+    return hooks[seed % len(hooks)] + "\n\n" + CHANNEL_EVERGREEN
 
 
 def generate_short_tags(metadata: Dict) -> List[str]:
-    """Tag set for a short: star names first, then the evergreen niche terms."""
-    tags = []
-    star = (metadata.get('focus_star') or '').strip().lower()
-    if star:
-        tags += [star, f"{star} photos", star.split()[-1]]
-    for n in (metadata.get('names') or [])[:4]:
-        tags.append(n.lower())
-    q = metadata.get('quote') or []
-    if q:
-        film = re.sub(r'\s*\(\d{4}\)\s*$', '', q[1]).strip().lower()
-        said_by = (q[2] if len(q) > 2 else star).lower()
-        tags += [film, f"{said_by} quotes" if said_by else "classic movie quotes"]
-    tags += ["shorts", "old hollywood", "vintage photos", "classic hollywood",
-             "golden age", "glamour photos", "vintage actresses",
-             "rare photos", "nostalgia", "black and white photography",
-             "actress actor and pinups"]
-    seen = set()
-    return [t for t in tags if not (t in seen or seen.add(t))]
+    """The owner's proven Shorts tag list, verbatim (it fills the 500-char
+    budget on its own; names already sit in the title, description and on
+    screen)."""
+    return list(PROVEN_TAGS)
+
