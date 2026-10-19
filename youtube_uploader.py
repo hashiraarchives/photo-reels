@@ -543,8 +543,23 @@ def build_fallback_title(metadata: Dict) -> str:
         fit = [t for t in pool if len(t) <= 86] or pool
         return [fit[(seed + i) % len(fit)] for i in range(len(fit))] if fit else []
 
+    # Theme day (2026-10 life moments): the theme IS the promise.
+    theme_templates: List[str] = []
+    tk = (metadata.get('theme_key') or '').strip()
+    if tk:
+        import history_data as hd
+        t = hd.theme_by_key(tk)
+        if t:
+            ys = []
+            for img in metadata.get('images', []):
+                if img.get('focus_theme'):
+                    m = _YEAR_RE.search(' '.join(str(img.get(k) or '') for k in
+                                                 ('date', 'image_filename', 'generated_caption')))
+                    if m:
+                        ys.append(int(m.group(1)))
+            theme_templates = [hd.theme_title(t, k, ys) for k in range(len(t['titles']))]
     # Star titles first (when this is a star episode), generic only as backup.
-    ordered = _rotate(star_templates) + _rotate(templates)
+    ordered = _rotate(theme_templates) + _rotate(star_templates) + _rotate(templates)
     title = next((t for t in ordered if not is_title_too_similar(t)), ordered[0])
     return finalize_title(
         title,
@@ -658,7 +673,11 @@ def _short_history_section(metadata: Dict, focus: str) -> str:
     rows = ["📜 A Short History in Pictures",
             "This collection runs in chapters, oldest photos first:"]
     n = 0
-    if focus:
+    theme = hd.theme_by_key(metadata.get('theme_key') or '') if metadata.get('theme_key') else None
+    if theme:
+        n += 1
+        rows.append(f"{n}. {theme['card']}")
+    elif focus:
         n += 1
         span = _star_span(metadata, focus)
         rows.append(f"{n}. {focus} {span}".rstrip())
@@ -668,6 +687,8 @@ def _short_history_section(metadata: Dict, focus: str) -> str:
         rows.append(f"{n}. {e['title']} ({rng})")
     picks = [eras[0]] + ([eras[len(eras) // 2]] if len(eras) >= 3 else [])
     rows.append("")
+    if theme:
+        rows.append(theme['desc'])
     rows += [e['desc'] for e in picks]
     return "\n".join(rows)
 
@@ -921,6 +942,11 @@ def upload_video(
             'description': description,
             'tags': tags,
             'categoryId': category_id,
+            # English title/description and audio (music-only, English text).
+            # 126 of the last 146 uploads had no audio language; Golden Frame
+            # Hollywood sets both on every upload.
+            'defaultLanguage': 'en',
+            'defaultAudioLanguage': 'en',
         },
         'status': {
             'privacyStatus': effective_privacy,
@@ -1574,7 +1600,7 @@ def _history_short_titles(metadata: Dict, seed: int) -> List[str]:
         return cands
     if kind == 'theme':
         t = hd.theme_by_key(metadata.get('theme_key') or '')
-        return rot(list(t['titles'])) if t else []
+        return rot([hd.theme_title(t, k, years) for k in range(len(t['titles']))]) if t else []
     female = _all_female(metadata)
     who = "Hollywood's Leading Ladies" if female else "Hollywood's Greatest Stars"
     eras = metadata.get('eras') or []

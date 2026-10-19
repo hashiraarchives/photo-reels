@@ -271,13 +271,87 @@ THEMES: List[Dict] = [
 ]
 
 
+# LIFE MOMENTS (owner, 2026-10, from the Golden Frame Hollywood study: their
+# winners are real moments, one human theme per video). Public-domain only.
+# 'rows' selects by the photo itself: 'couple' = names exactly one known
+# actress and one known actor (screen couples), 'beach' = harvested by
+# harvest_life.py into the life pool. '{span}' becomes " (1920s to 1940s)".
+THEMES += [
+    {'key': 'couples', 'rows': 'couple', 'life': True,
+     'hook': "Hollywood's great screen couples.",
+     'card': "Hollywood's Great Screen Couples",
+     'titles': ["Hollywood's Great Screen Couples{span}",
+                "Old Hollywood Love Stories: Golden Age Screen Couples{span}",
+                "The Screen Couples Who Made Hollywood Swoon{span}"],
+     'desc': ("Old Hollywood sold romance by the reel: the studios paired their biggest "
+              "stars again and again, and audiences came back to watch them fall in love. "
+              "A few of those pairs fell for each other off screen too."),
+     'lines': ["The studios paired their biggest stars again and again.",
+               "Audiences came back to watch them fall in love."],
+     'prompt': ("Best screen couple ever?", "Make your case below")},
+    {'key': 'beach', 'rows': 'beach', 'life': True,
+     'hook': "Bathing beauties and beach days, the way they really were.",
+     'card': "Bathing Beauties and Beach Days",
+     'titles': ["Bathing Beauties and Beach Days{span}",
+                "Vintage Beach Days in Rare Photos{span}",
+                "Old-Time Bathing Beauties in Rare Photos{span}"],
+     'desc': ("In the 1910s and 1920s Mack Sennett's Bathing Beauties made the beach a "
+              "Hollywood fixture, and in the early 1920s some beaches still had officers "
+              "checking that swimsuits were long enough. These are real photos from those summers."),
+     'lines': ["Mack Sennett's Bathing Beauties made the beach a Hollywood fixture.",
+               "Some beaches still had officers checking swimsuit lengths."],
+     'prompt': ("Ever been to a boardwalk?", "Share a memory below")},
+]
+
+
+def theme_pools(theme: Dict):
+    """Which pool CSVs a theme draws from."""
+    import config
+    if theme.get('rows') == 'beach':
+        return (config.GOLDMINE_LIFE_CSV,)
+    if theme.get('rows') == 'couple':
+        return tuple(p for p in (config.GOLDMINE3_CSV, config.GOLDMINE_CSV, config.GOLDMINE2_CSV,
+                                 getattr(config, 'GOLDMINE4_CSV', '')) if p)
+    return (config.GOLDMINE3_CSV,)
+
+
+def row_in_theme(theme: Dict, row: Dict) -> bool:
+    """Row-level membership for the 'rows' themes (pool rows or clips)."""
+    import star_data as sd
+    fn = row.get('image_filename') or row.get('filename') or ''
+    cat = row.get('source_category') or row.get('category') or ''
+    if theme.get('rows') == 'beach':
+        if (row.get('life_theme') or '') != 'beach':
+            return False
+        # "Bathing Beauties": a photo led by a man's name (a champion
+        # swimmer, a comedian) doesn't keep the promise
+        lead = ' '.join(((row.get('description') or '') or fn).split()[:2])
+        return not sd.likely_male(lead) and not sd.likely_male(sd.identify(fn, cat) or '')
+    if theme.get('rows') == 'couple':
+        return sd.screen_couple(fn, cat) is not None
+    return False
+
+
+def theme_title(theme: Dict, k: int, years: List[int]) -> str:
+    ys = [y for y in years if y]
+    span = ''
+    if ys:
+        d0, d1 = (min(ys) // 10) * 10, (max(ys) // 10) * 10
+        span = f" ({d0}s to {d1}s)" if d1 > d0 else f" ({d0}s)"
+    t = theme['titles'][k % len(theme['titles'])]
+    return t.replace('{span}', span)
+
+
 def theme_by_key(key: str) -> Optional[Dict]:
     return next((t for t in THEMES if t['key'] == key), None)
 
 
-def theme_admits(theme: Dict, name: Optional[str], year: Optional[int]) -> bool:
+def theme_admits(theme: Dict, name: Optional[str], year: Optional[int],
+                 clip: Optional[Dict] = None) -> bool:
     """Whether a photo (its identified star and year) fits a theme's promise."""
     import star_data as sd
+    if 'rows' in theme:
+        return bool(clip) and row_in_theme(theme, clip)
     if 'years' in theme:
         lo, hi = theme['years']
         if not (year and lo <= year <= hi):

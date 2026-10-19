@@ -280,7 +280,8 @@ def select_unused_images(count: int = config.IMAGES_PER_VIDEO,
                          reuse_days: Optional[int] = None,
                          for_shorts: bool = False,
                          star_episode: bool = True,
-                         row_filter=None
+                         row_filter=None,
+                         theme_episode: bool = False
                          ) -> List[Dict]:
     """
     Select unused, quality (real-photo) images across the goldmine CSVs,
@@ -296,7 +297,7 @@ def select_unused_images(count: int = config.IMAGES_PER_VIDEO,
     # take everything from the curated pool, where the bulk pools are where the
     # damaged scans, scene stills and title cards live.
     pools: List[Tuple[str, List[Dict]]] = []
-    for path in (pool_paths or (config.GOLDMINE3_CSV, config.GOLDMINE_CSV, config.GOLDMINE2_CSV)):
+    for path in (pool_paths or _LONGFORM_POOLS()):
         rows, _ = _read_image_csv(path)
         if not rows:
             continue
@@ -321,7 +322,10 @@ def select_unused_images(count: int = config.IMAGES_PER_VIDEO,
     # day now — the old 'mixed'-day skip silently disabled star episodes on
     # half of all days, and star rotation already provides the day-to-day
     # variety the mixed days existed for.
-    if getattr(config, 'STAR_EPISODES', True) and star_episode:
+    theme_key = None
+    if theme_episode and random.random() < float(getattr(config, 'LONGFORM_THEME_RATE', 0) or 0):
+        theme_key = _take_theme_block(count, reuse_days, selected, picked)
+    if getattr(config, 'STAR_EPISODES', True) and star_episode and not theme_key:
         star = pick_focus_star(pools, min_rows=star_min_rows)
         if star is None:
             best = max(((len(_rows_for_star(pools, s)), s) for s in
@@ -353,10 +357,16 @@ def select_unused_images(count: int = config.IMAGES_PER_VIDEO,
                       f"(need {STAR_EPISODE_MIN_ROWS})")
                 picked.difference_update(id(r) for r in got)
     elif getattr(config, 'STAR_EPISODES', True) and star_episode:
-        print(f"  STAR EPISODE: not attempted — angle is '{angle_name}'")
+        print(f"  STAR EPISODE: not attempted — "
+              + (f"theme day ({theme_key})" if theme_key else f"angle is '{angle_name}'"))
+
+    # A day with no star episode becomes a life-moments theme day when the
+    # pool can fill one (star benches are mostly too thin now).
+    if theme_episode and not theme_key and focus_star is None:
+        theme_key = _take_theme_block(count, reuse_days, selected, picked)
 
     # Pass 1 — era-biased picks (~60% of the video) on era-angle days.
-    if focus_star is None and lo is not None:
+    if focus_star is None and theme_key is None and lo is not None:
         in_window = lambda r: (y := _row_year(r)) is not None and lo <= y <= hi
         pref_total = sum(1 for _, usable in pools for r in usable if in_window(r))
         if pref_total >= 30:
@@ -376,7 +386,8 @@ def select_unused_images(count: int = config.IMAGES_PER_VIDEO,
     for name, usable in pools:
         if len(selected) >= count:
             break
-        rest = [r for r in usable if id(r) not in picked]
+        taken_urls = {r.get('image_url') for r in selected}
+        rest = [r for r in usable if id(r) not in picked and r.get('image_url') not in taken_urls]
         got = take(rest, count - len(selected))
         selected.extend(got)
         print(f"  {name}: {len(rest)} usable photos available, took {len(got)}")
@@ -397,15 +408,85 @@ def select_unused_images(count: int = config.IMAGES_PER_VIDEO,
         random.shuffle(star_block)
         random.shuffle(rest)
         selected = star_block + rest
+    elif theme_key:
+        block = [r for r in selected if r.get('focus_theme')]
+        rest = [r for r in selected if not r.get('focus_theme')]
+        random.shuffle(rest)
+        selected = block + rest
     else:
         random.shuffle(selected)  # interleave era-biased and mixed picks
-    label = f"star:{focus_star}" if focus_star else f"angle:{angle_name}"
+    label = (f"star:{focus_star}" if focus_star else
+             f"theme:{theme_key}" if theme_key else f"angle:{angle_name}")
     print(f"Selected {len(selected)} images total ({label})")
     # Stamp the focus star on every row so it survives into metadata, where the
     # title, tags and playlist all need it.
     for r in selected:
         r['focus_star'] = focus_star or ''
     return selected
+
+
+def _take_theme_block(count: int, reuse_days: Optional[int], selected: List[Dict],
+                      picked: set) -> Optional[str]:
+    """LIFE-MOMENTS THEME DAY (2026-10, Golden Frame Hollywood study: one
+    human theme per video). Front-loads ~65% of the video from one theme --
+    screen couples or bathing beauties -- when its pools can fill it, the way
+    a star episode front-loads one star. Returns the theme key or None."""
+    import history_data as hd
+    led_path = os.path.join(config.DATA_FOLDER, 'packaging_recent.json')
+    try:
+        with open(led_path, encoding='utf-8') as f:
+            led = json.load(f) or {}
+    except Exception:
+        led = {}
+    recent = led.get('lf_themes', [])[-2:]
+    need = max(25, int(count * 0.45))
+    options = []
+    for t in hd.THEMES:
+        if not t.get('life'):
+            continue
+        seen, rows = set(), []
+        for path in hd.theme_pools(t):
+            if not os.path.exists(path):
+                continue
+            for r in _read_image_csv(path)[0]:
+                u = r.get('image_url')
+                if u in seen or not _row_is_available(r, reuse_days) or not _passes_quality(r):
+                    continue
+                if hd.row_in_theme(t, r):
+                    seen.add(u)
+                    rows.append(r)
+        print(f"  theme '{t['key']}': {len(rows)} rows free (need {need})")
+        if len(rows) >= need:
+            options.append((t, rows))
+    if not options:
+        return None
+    fresh = [o for o in options if o[0]['key'] not in recent] or options
+    theme, rows = random.choice(fresh)
+    got = random.sample(rows, min(len(rows), int(count * 0.65)))
+    for r in got:
+        r['focus_theme'] = theme['key']
+    selected.extend(got)
+    picked.update(id(r) for r in got)
+    led['lf_themes'] = (recent + [theme['key']])[-10:]
+    try:
+        with open(led_path, 'w', encoding='utf-8') as f:
+            json.dump(led, f, indent=1, ensure_ascii=False)
+    except Exception:
+        pass
+    print(f"  THEME DAY: {theme['key']} -- {len(got)} photos front-loaded")
+    return theme['key']
+
+
+def _LONGFORM_POOLS() -> Tuple[str, ...]:
+    """Default draw order: curated first, then the bulk pools, then the
+    2026-10 refill. The life-moments pool is drawn only by its themes."""
+    return tuple(p for p in (config.GOLDMINE3_CSV, config.GOLDMINE_CSV, config.GOLDMINE2_CSV,
+                             getattr(config, 'GOLDMINE4_CSV', '')) if p and os.path.exists(p))
+
+
+def _ALL_POOLS() -> Tuple[str, ...]:
+    return _LONGFORM_POOLS() + tuple(p for p in (getattr(config, 'GOLDMINE_LIFE_CSV', ''),)
+                                     if p and os.path.exists(p))
 
 
 def mark_images_used(images: List[Dict], column: str = 'used'):
@@ -425,7 +506,9 @@ def mark_images_used(images: List[Dict], column: str = 'used'):
     used_urls = set(mark_for)
     if not used_urls:
         return
-    for path in (config.GOLDMINE3_CSV, config.GOLDMINE_CSV, config.GOLDMINE2_CSV):
+    for path in _ALL_POOLS():
+        if not os.path.exists(path):
+            continue
         rows, fieldnames = _read_image_csv(path)
         if not rows:
             continue
@@ -624,7 +707,16 @@ def _is_portrait(path: str) -> bool:
         return False
 
 
-def check_image_quality(path: str) -> Tuple[bool, str]:
+def _longform_fit_ok(w: int, h: int) -> bool:
+    """True when the 1080p long-form canvas needs at most
+    LONGFORM_MAX_UPSCALE enlargement to fit this photo (2026-10 refill: a
+    900px-tall portrait is fine at 1080p; the 1200px long-edge rule had
+    permanently retired 4,407 bulk-pool photos, 953 of them usable)."""
+    up = float(getattr(config, 'LONGFORM_MAX_UPSCALE', 0) or 0)
+    return bool(up) and w > 0 and h > 0 and min(config.WIDTH / w, config.HEIGHT / h) <= up
+
+
+def check_image_quality(path: str, longform: bool = False) -> Tuple[bool, str]:
     """
     (ok, reason) for a freshly downloaded image. The absolute gates are
     RESOLUTION and ASPECT — reliable on vintage material. Sharpness
@@ -637,7 +729,11 @@ def check_image_quality(path: str) -> Tuple[bool, str]:
     try:
         with Image.open(path) as img:
             w, h = img.size
-            if min_edge and max(w, h) < min_edge:
+            if min_edge and max(w, h) < min_edge and not (longform and _longform_fit_ok(w, h)):
+                if not longform and _longform_fit_ok(w, h):
+                    # too small for a vertical short, fine for long-form:
+                    # skip it here without retiring it from the pool
+                    return False, f"small-for-short {w}x{h}"
                 return False, f"low-res {w}x{h} (< {min_edge}px)"
             aspect = max(w, h) / max(1, min(w, h))
             if max_aspect and aspect > max_aspect:
@@ -799,7 +895,8 @@ def _fetch(session, url: str, save_path: str, max_retries: int = 3) -> Tuple[boo
 
 
 async def download_with_browser(images: List[Dict], temp_dir: str,
-                                target_count: Optional[int] = None) -> List[Dict]:
+                                target_count: Optional[int] = None,
+                                longform: bool = False) -> List[Dict]:
     """
     Download pool images from Wikimedia Commons.
 
@@ -844,8 +941,10 @@ async def download_with_browser(images: List[Dict], temp_dir: str,
                 img['quality_rejected'] = True   # gone from Commons: retire the row
                 img['retire'] = 'GONE'
         else:
-            ok, reason = check_image_quality(download_path)
-            if not ok:
+            ok, reason = check_image_quality(download_path, longform=longform)
+            if not ok and 'small-for-short' in str(reason):
+                print(f"  [{i+1}/{len(images)}] skipped (kept for long-form): {reason}")
+            elif not ok:
                 # Blacklist the row (marked used later) so junk self-cleans.
                 img['quality_rejected'] = True
                 img['retire'] = 'LOWRES' if 'low-res' in str(reason) else 'REJECT'
@@ -860,6 +959,9 @@ async def download_with_browser(images: List[Dict], temp_dir: str,
                     'filename': img.get('image_filename', ''),
                     'category': img.get('source_category', ''),
                     'date': img.get('date') or '',
+                    'description': img.get('description') or '',
+                    'life_theme': img.get('life_theme') or '',
+                    'focus_theme': img.get('focus_theme') or '',
                     'index': i,
                     'portrait': _is_portrait(download_path),
                 })
@@ -1259,6 +1361,21 @@ def _montage_long_captions(images: List[Dict]) -> None:
         clip = {'date': img.get('date'), 'filename': img.get('image_filename'),
                 'caption': raw, 'category': img.get('source_category')}
         year = hd.photo_year(clip, name)
+        couple = sd.screen_couple(img.get('image_filename'), img.get('source_category'))
+        if couple:
+            # a screen couple (2026-10): who, the film, a real-life marriage
+            img['generated_caption'] = sd.couple_caption(couple[0], couple[1], raw,
+                                                         img.get('source_category') or '', year)
+            n_done += 1
+            continue
+        if (img.get('life_theme') or '') == 'beach' or not name:
+            # the moment itself, from the photo's own archive description
+            story = sd.story_caption(img.get('description') or '', year,
+                                     warm='beach' if img.get('life_theme') == 'beach' else '', seed=idx)
+            if story:
+                img['generated_caption'] = story
+                n_done += 1
+                continue
         if not name:
             # Unidentified: never ship raw archive text ("of actress Claire
             # Luce LCCN2004663221 (1964) band Edward Judson"). Say what we can
@@ -1343,7 +1460,7 @@ def _order_chronologically(clips: List[Dict], focus: str) -> List[Dict]:
         c['_name'] = name
         c['_year'] = hd.photo_year(c, name)
         c['_ay'] = c['_year'] or hd.approx_year(c, name)
-        c['_star'] = bool(fl) and (fl in _clip_blob(c) or fl.split()[-1] in _clip_blob(c))
+        c['_star'] = (bool(fl) and (fl in _clip_blob(c) or fl.split()[-1] in _clip_blob(c)))             or bool(c.get('focus_theme'))
     key = lambda c: (c['_ay'] or 3000)
 
     # The opening frame decides whether anyone stays: a named, solo leading
@@ -1362,7 +1479,7 @@ def _order_chronologically(clips: List[Dict], focus: str) -> List[Dict]:
     return [opener] + star + rest
 
 
-def _build_sequence(clips: List[Dict], focus: str) -> List[Tuple[str, Dict]]:
+def _build_sequence(clips: List[Dict], focus: str, theme_key: str = '') -> List[Tuple[str, Dict]]:
     """Insert chapter cards: one for the star block, then one per era (only
     for an era that fills at least 3 photos -- a card followed by a single
     photo reads as a glitch)."""
@@ -1374,7 +1491,16 @@ def _build_sequence(clips: List[Dict], focus: str) -> List[Tuple[str, Dict]]:
     seq += [('photo', c) for c in clips if c.get('_open')]
     star = [c for c in body if c.get('_star')]
     rest = [c for c in body if not c.get('_star')]
-    if star and focus:
+    theme = hd.theme_by_key(theme_key) if theme_key else None
+    if star and theme:
+        ys = [c['_year'] for c in star if c.get('_year')]
+        n_card += 1
+        seq.append(('card', {'kicker': f"CHAPTER {n_card}",
+                             'years': f"{min(ys)} – {max(ys)}" if len(ys) >= 2 and max(ys) > min(ys) else '',
+                             'title': theme['card'], 'lines': list(theme.get('lines', []))[:2],
+                             'bg': star[0].get('orig') or star[0].get('path')}))
+        seq += [('photo', c) for c in star]
+    elif star and focus:
         ys = [c['_year'] for c in star if c.get('_year')]
         facts = sd.facts_for(focus)
         n_card += 1
@@ -1538,7 +1664,8 @@ def create_video(images: List[Dict], output_path: str, theme: str = "Classic_Hol
         if BROWSER_DOWNLOAD_AVAILABLE:
             # Use browser-based downloading (no rate limits!)
             print("  Using headless browser (bypasses rate limits)...")
-            image_paths = asyncio.run(download_with_browser(images, temp_dir, target_count))
+            image_paths = asyncio.run(download_with_browser(images, temp_dir, target_count,
+                                                            longform=True))
         else:
             # Fallback to requests-based downloading (may hit rate limits)
             print("  Using requests (may hit rate limits)...")
@@ -1596,6 +1723,7 @@ def create_video(images: List[Dict], output_path: str, theme: str = "Classic_Hol
         # "through the years"), opening on the most recognisable face, with a
         # chapter card wherever a new era begins.
         focus = next((im.get('focus_star') for im in images if im.get('focus_star')), '')
+        theme_key = next((im.get('focus_theme') for im in images if im.get('focus_theme')), '')
         chrono = getattr(config, 'LONGFORM_CHRONOLOGICAL', False) and len(image_paths) > 1
         if chrono:
             image_paths = _order_chronologically(image_paths, focus)
@@ -1679,6 +1807,9 @@ def create_video(images: List[Dict], output_path: str, theme: str = "Classic_Hol
             # "<Name> and <Name>" / "X with Y" style filenames
             return not _JOINER.search(fn)
 
+        import star_data as _sd
+        sd_child = lambda b: _sd.is_child_photo(b)
+
         def _cand_rank(clip: Dict):
             cap = (clip.get('caption') or '').lower()
             fn = (clip.get('filename') or '')
@@ -1691,7 +1822,11 @@ def create_video(images: List[Dict], output_path: str, theme: str = "Classic_Hol
             not_env = not any(t in blob for t in _ENV_TERMS)
             pinup = any(t in blob for t in _PINUP_TERMS)
             star = any(s in cap for s in _KS)
-            return (lady and clean and solo, clean, not_env, solo,
+            # Theme days (2026-10): a frame of the theme itself -- a screen
+            # couple, a beach day -- is eligible even with two people in it;
+            # the thumbnail generator then ranks the eligible frames by warmth.
+            themed = bool(clip.get('focus_theme')) and not sd_child(blob)
+            return ((lady and clean and solo) or (themed and clean), clean, not_env, solo,
                     pinup, clip.get('portrait', False), star)
 
         # A star episode's thumbnail must show THAT star (the 2026-10 audit found
@@ -1791,7 +1926,7 @@ def create_video(images: List[Dict], output_path: str, theme: str = "Classic_Hol
 
         # Image clips with Ken Burns and text overlay, chapter cards between eras
         if chrono and getattr(config, 'LONGFORM_ERA_CARDS', False):
-            sequence = _build_sequence(image_paths, focus)
+            sequence = _build_sequence(image_paths, focus, theme_key)
         else:
             sequence = [('photo', c) for c in image_paths]
         card_d = float(getattr(config, 'ERA_CARD_DURATION', 6))
@@ -2053,7 +2188,7 @@ def generate_video(image_count: int = config.IMAGES_PER_VIDEO, theme: str = None
     # quality rejects (low-res/extreme-aspect scans) still fill the video.
     print("\n[Step 1] Selecting images...")
     buffer = getattr(config, 'SELECT_BUFFER', 1.3)
-    images = select_unused_images(int(image_count * buffer))
+    images = select_unused_images(int(image_count * buffer), theme_episode=True)
 
     if len(images) < 1:
         print("Error: No images available!")
@@ -2106,6 +2241,7 @@ def generate_video(image_count: int = config.IMAGES_PER_VIDEO, theme: str = None
                 'video_file': output_path,
                 'theme': theme,
                 'focus_star': focus_star,
+                'theme_key': next((i.get('focus_theme') for i in video_images if i.get('focus_theme')), ''),
                 'image_count': len(video_images),
                 'duration_seconds': actual_duration,
                 'timeline': timeline,   # real per-image start times → accurate chapters

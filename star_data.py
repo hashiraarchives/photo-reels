@@ -18,6 +18,7 @@ HUMOR_*    - affectionate, never mocking. The audience is older US men; the
 Keep every quote under ~90 characters: it has to fit a phone screen in type an
 older viewer can read at arm's length.
 """
+import re
 from typing import Dict, List, Optional, Tuple
 
 # name (lowercase) -> (gender 'f'/'m', birth year)
@@ -171,6 +172,7 @@ _MALE_FIRST = {
     'melvyn', 'franchot', 'don', 'milton', 'warner', 'clive', 'herbert', 'basil', 'boris',
     'bela', 'claude', 'conrad', 'antonio', 'norman', 'rod', 'lew', 'nelson', 'warren',
     'wallace', 'william', 'hobart', 'monte', 'ricardo', 'noah', 'lloyd', 'eddie', 'bert',
+    'johnny', 'billy', 'jimmy', 'bobby', 'tommy', 'duke', 'buddy', 'jack',
 }
 
 
@@ -470,6 +472,106 @@ def identify(*texts) -> Optional[str]:
         if k in blob or (len(parts) >= 2 and parts[0] in words and parts[-1] in words):
             found.add(_ALIASES.get(k, k))
     return display_name(found.pop()) if len(found) == 1 else None
+
+
+def identify_all(*texts) -> List[str]:
+    """Every known star a text names (same matching rules as identify)."""
+    import re
+    blob = re.sub(r'[_\-,./()]', ' ', ' '.join(t or '' for t in texts).lower())
+    words = set(blob.split())
+    found = []
+    for k in STAR_INFO:
+        parts = k.replace('-', ' ').split()
+        if k in blob or (len(parts) >= 2 and parts[0] in words and parts[-1] in words):
+            k = _ALIASES.get(k, k)
+            if k not in found:
+                found.append(k)
+    return [display_name(k) for k in found]
+
+
+# Real-life married couples (both names known), for an honest "married in
+# real life" note on a screen-couple photo. Only well-documented marriages.
+REAL_COUPLES = {
+    frozenset({'mary pickford', 'douglas fairbanks'}): 'married in 1920',
+    frozenset({'clark gable', 'carole lombard'}): 'married in 1939',
+    frozenset({'humphrey bogart', 'lauren bacall'}): 'married in 1945',
+    frozenset({'elizabeth taylor', 'richard burton'}): 'married in 1964',
+    frozenset({'william powell', 'carole lombard'}): 'married in 1931',
+    frozenset({'robert taylor', 'barbara stanwyck'}): 'married in 1939',
+    frozenset({'douglas fairbanks', 'joan crawford'}): '',
+}
+
+
+def screen_couple(*texts) -> Optional[tuple]:
+    """(actress, actor) when a photo names exactly one known woman and one
+    known man -- a screen (or real-life) couple."""
+    names = identify_all(*texts)
+    f = [n for n in names if star_gender(n) == 'f']
+    m = [n for n in names if star_gender(n) == 'm']
+    return (f[0], m[0]) if len(f) == 1 and len(m) == 1 and len(names) == 2 else None
+
+
+# --- story captions (2026-10, after the Golden Frame Hollywood study) ---------
+# Their captions narrate the MOMENT ("Lee Remick on the beach in 1958.
+# Lovely!!"). Ours come from the photo's own archive description -- never
+# invented -- cleaned of catalogue noise, kept to one readable sentence.
+_STORY_NOISE = [
+    r'(?i)\babstract/medium:.*$', r'(?i)\bnote:.*$', r'(?i)\bsubjects?:.*$',
+    r'(?i)\b(library of congress|national photo company collection|bain news service)\b.*$',
+    r'(?i)\b1 (negative|photographic print|photo).*$', r'(?i)^(english|description|title)\s*:\s*',
+    r'(?i)\bphotograph shows\s*', r'\(SAYRE \d+\)', r'\bLCCN\w+',
+]
+_ABBREV = re.compile(r'(?:\b(?:Mr|Mrs|Ms|Dr|St|Jr|Sr|Co|Mt|Ft|Wash|Cal|Calif|Pa|N\.Y|D\.C|U\.S|Gen|Col|Capt|Lt|Sgt)|\b[A-Z])$')
+_FOREIGN_WORDS = re.compile(r'(?i)\b(der|die|das|und|het|een|van de|le|la|les|des|du|et|il|el|los|og|och|och)\b')
+_ENGLISH_WORDS = re.compile(r'(?i)\b(the|a|an|at|on|in|with|and|of|for|from|during|her|his)\b')
+_WARM = {'beach': ["Lovely!", "What a day.", "Pure summer.", "Those were the days."],
+         'couple': ["What a pair.", "Pure Hollywood romance.", "Lovely!"],
+         'any': ["Lovely!", "Those were the days."]}
+
+
+def story_caption(desc: str, year: Optional[int] = None, warm: str = '', seed: int = 0) -> str:
+    """One factual sentence describing the moment, from the archive text, or
+    '' when the text isn't a clean English description."""
+    t = ' '.join((desc or '').split())
+    for rx in _STORY_NOISE:
+        t = re.sub(rx, '', t).strip()
+    # first sentence (abbreviations like "D.C." or "Mrs." don't end one)
+    out, i = t, 0
+    for m in re.finditer(r'\.\s+(?=[A-Z])', t):
+        if not _ABBREV.search(t[:m.start()]):
+            out = t[:m.start()]
+            break
+    t = out.strip().rstrip(';:,')
+    if t.endswith('.') and not re.search(r'\b[A-Z]\.[A-Z]\.$', t):
+        t = t[:-1]
+    if not t or '[' in t or '?' in t or len(t) > 115:
+        return ''
+    words = t.split()
+    if len(words) < 4 or not t[0].isupper() or not _ENGLISH_WORDS.search(t) or _FOREIGN_WORDS.search(t):
+        return ''
+    if re.search(r'\d{1,2}/\d{1,2}/\d{2,4}', t):
+        return ''
+    if year and not re.search(r'\b(18|19)\d\d\b', t):
+        t = f"{t}, {year}"
+    t += '.'
+    pool = _WARM.get(warm) if warm else None
+    if pool and seed % 3 == 0:
+        t += ' ' + pool[seed % len(pool)]
+    return t
+
+
+def couple_caption(actress: str, actor: str, raw: str = '', category: str = '',
+                   year: Optional[int] = None) -> str:
+    """"Lauren Bacall and Humphrey Bogart in The Big Sleep, 1946. Married in
+    real life in 1945." -- the film only when the archive names it."""
+    film = re.search(r'in ["“]([^"”]{2,40})["”]', raw or '')
+    film = film.group(1) if film else ''
+    if not film:
+        m = re.match(r'^Category:(.+?) \((?:\d{4} )?[\w ]*film\)$', category or '')
+        film = m.group(1) if m else ''
+    head = f"{actress} and {actor}" + (f" in {film}" if film else '') + (f", {year}." if year else '.')
+    note = REAL_COUPLES.get(frozenset({_key(actress), _key(actor)}))
+    return head + (f" Married in real life in {note[len('married in '):]}." if note else '')
 
 
 def era_of(year: Optional[int]) -> Optional[str]:

@@ -431,6 +431,7 @@ def generate_short(theme: Optional[str] = None) -> Optional[str]:
                for_shorts=True, star_episode=want_star)
     if story:
         sel['row_filter'] = _theme_row_filter(story)
+        pools = hd_theme_pools(story)
         print(f"  THEMED SHORT: {story['key']}")
     rows = select_unused_images(int(keep * cand), pool_paths=pools, **sel)
     if len(rows) < keep and curated_only:
@@ -440,6 +441,7 @@ def generate_short(theme: Optional[str] = None) -> Optional[str]:
         print(f"  theme '{story['key']}' too thin ({len(rows)} rows); running as a timeline")
         story = None
         sel.pop('row_filter', None)
+        pools = (config.GOLDMINE3_CSV,) if curated_only else None
         rows = select_unused_images(int(keep * cand), pool_paths=pools, **sel)
     if len(rows) < 3:
         print("Error: not enough photos available")
@@ -896,11 +898,19 @@ def _save_ledger(led: dict):
         print(f"  packaging ledger not saved: {e}")
 
 
+def hd_theme_pools(story: dict):
+    import history_data as hd
+    return tuple(p for p in hd.theme_pools(story) if os.path.exists(p))
+
+
 def _theme_row_filter(story: dict):
     """Row-level test for a themed short, from the filename/category alone
     (selection happens before anything is scraped or downloaded)."""
     import star_data as sd
     import history_data as hd
+
+    if 'rows' in story:                     # life-moments themes test the row itself
+        return lambda r: hd.row_in_theme(story, r)
 
     def ok(r):
         fn, cat = r.get('image_filename') or '', r.get('source_category') or ''
@@ -918,9 +928,21 @@ def _pick_short_theme(reuse: int, need: int) -> Optional[dict]:
     as a timeline)."""
     import history_data as hd
     from create_slideshow import _read_image_csv, _short_available, _passes_quality
-    rows, _ = _read_image_csv(config.GOLDMINE3_CSV)
-    rows = [r for r in rows if _short_available(r, reuse) and _passes_quality(r)]
-    avail = {t['key']: sum(1 for r in rows if _theme_row_filter(t)(r)) for t in hd.THEMES}
+    cache = {}
+
+    def rows_for(paths):
+        out, seen = [], set()
+        for p in paths:
+            if p not in cache:
+                rr, _ = _read_image_csv(p) if os.path.exists(p) else ([], None)
+                cache[p] = [r for r in rr if _short_available(r, reuse) and _passes_quality(r)]
+            for r in cache[p]:
+                if r.get('image_url') not in seen:
+                    seen.add(r.get('image_url'))
+                    out.append(r)
+        return out
+    avail = {t['key']: sum(1 for r in rows_for(hd.theme_pools(t)) if _theme_row_filter(t)(r))
+             for t in hd.THEMES}
     led = _load_ledger()
     story = hd.pick_theme(avail, need, led.get('themes', []))
     print(f"  theme supply (need {need}): {avail} -> {story['key'] if story else 'none'}")
@@ -970,14 +992,18 @@ def _arrange_history(pool: List[dict], kind: str, focus_star: str,
             name = focus_star
         else:
             name = sd.identify(c.get('filename'), c.get('category'), c.get('caption'))
+        couple = sd.screen_couple(c.get('filename'), c.get('category')) if kind != 'star' else None
         raw = _year_in(str(c.get('date') or '')) or _year_in(blob)
-        if sd.is_child_photo(blob + ' ' + str(c.get('date') or ''), name, raw):
+        if sd.is_child_photo(blob + ' ' + str(c.get('date') or '') + ' ' + str(c.get('description') or ''),
+                             name, raw):
             print(f"    skip (childhood photo): {(c.get('filename') or '')[:50]}")
             continue
-        year = hd.photo_year(c, name)
-        if story and not hd.theme_admits(story, name, year):
+        if couple and any(not sd.plausible_year(n, raw) for n in couple if raw):
+            continue                       # both people must be adults that year
+        year = hd.photo_year(c, name or (couple[0] if couple else None))
+        if story and not hd.theme_admits(story, name, year, clip=c):
             continue
-        c['_name'], c['_year'] = name, year
+        c['_name'], c['_year'], c['_couple'] = name, year, couple
         c['_ay'] = year or hd.approx_year(c, name)
         c['_solo'] = _is_solo(c)
         cands.append(c)
@@ -985,26 +1011,44 @@ def _arrange_history(pool: List[dict], kind: str, focus_star: str,
         return []
     star_male = kind == 'star' and sd.star_gender(focus_star) == 'm'
 
+    life = bool(story and story.get('life'))
+    if life:
+        # Life-moments themes lead with WARMTH (owner, 2026-10): a couple's
+        # embrace or a beach day is the point, so a two-person frame is
+        # welcome and the most intimate real photo opens the short.
+        try:
+            from generate_thumbnail import intimacy_score
+            for c in cands:
+                src = c.get('orig') or c.get('path')
+                hint = ' '.join(str(c.get(k) or '') for k in ('filename', 'caption', 'description'))
+                c['_warm'] = intimacy_score(src, hint) if src else 0.0
+        except Exception:
+            pass
+
     def worthy(c):
+        if life:
+            return True
         if not c['_solo']:
             return False
         if star_male:
             return True
         return bool(c['_name']) and sd.star_gender(c['_name']) == 'f'
 
-    score = lambda c: (c.get('vision_score', 5.0), c.get('heur_score', 0.0))
+    score = lambda c: (c.get('_warm', 0.0) if life else 0.0,
+                       c.get('vision_score', 5.0), c.get('heur_score', 0.0))
     cands.sort(key=score, reverse=True)
     lead = next((c for c in cands if worthy(c)), cands[0])
     rest = [c for c in cands if c is not lead]
     if kind != 'star':
         # a timeline or theme is a parade of faces: at most two photos of
         # anyone (a test short drew Mary Pickford four times)
-        seen_n: Dict[str, int] = {lead['_name']: 1} if lead['_name'] else {}
+        who = lambda c: c['_name'] or ('&'.join(c['_couple']) if c.get('_couple') else None)
+        seen_n: Dict[str, int] = {who(lead): 1} if who(lead) else {}
         capped = []
         for c in rest:
-            if c['_name']:
-                seen_n[c['_name']] = seen_n.get(c['_name'], 0) + 1
-                if seen_n[c['_name']] > 2:
+            if who(c):
+                seen_n[who(c)] = seen_n.get(who(c), 0) + 1
+                if seen_n[who(c)] > 2:
                     continue
             capped.append(c)
         rest = capped
@@ -1121,6 +1165,9 @@ def _plan_history(clips: List[dict], kind: str, focus_star: str,
         y = years[i]
         if not y:
             return None
+        cp = clips[i].get('_couple')
+        if cp and sd.REAL_COUPLES.get(frozenset(n.lower() for n in cp)):
+            return None             # "married in real life" is the better line here
         for k in range(3):
             ev = hd.year_event(y, seed=k + i)
             if not ev or ev in used_ev:
@@ -1164,7 +1211,10 @@ def _plan_history(clips: List[dict], kind: str, focus_star: str,
     fact_n: Dict[str, int] = {}
     for i in range(1, len(clips)):
         c, name, y = clips[i], names[i], years[i]
-        head = f"{name}, {y}." if name and y else (f"{name}." if name else '')
+        couple = c.get('_couple')
+        who = name or (f"{couple[0]} and {couple[1]}" if couple else '')
+        head = f"{who}, {y}." if who and y else (f"{who}." if who else '')
+        beachy = (story and story.get('rows') == 'beach') or c.get('life_theme') == 'beach'
         if i in hist:
             ev = hist[i]
             text = f"{head} That year, {ev}." if head else f"In {y}, {ev}."
@@ -1172,6 +1222,19 @@ def _plan_history(clips: List[dict], kind: str, focus_star: str,
         elif quote and quote[0] == i:
             text = sd.montage_caption(name, y, quote=(quote[1], quote[2]))
             extra[i] = max(0.0, min(1.5, len(text) / 14.0 - 4.4))
+        elif couple:
+            # a screen couple: who, the film, and a real-life marriage if any
+            text = sd.couple_caption(couple[0], couple[1], c.get('caption') or '',
+                                     c.get('category') or '', y)
+        elif beachy or not name:
+            # the moment itself, from the photo's own archive description
+            # ("Man and two women dancing at the Potomac Tidal Basin beach,
+            # Washington, D.C., 1922."), with an occasional warm aside
+            text = (sd.story_caption(c.get('description') or '', y,
+                                     warm='beach' if beachy else '', seed=i)
+                    or (f"{head}" if name else sd.montage_caption(None, None, c.get('caption') or '')))
+            if text and len(text) > 70:
+                extra[i] = 0.6
         else:
             detail = None
             if name:
@@ -1205,7 +1268,8 @@ def _plan_history(clips: List[dict], kind: str, focus_star: str,
     led['prompts'] = (led.get('prompts', []) + ([end_prompt[0]] if end_prompt else []))[-20:]
     _save_ledger(led)
 
-    who = list(dict.fromkeys(n for n in names.values() if n))
+    who = list(dict.fromkeys([n for c in clips for n in ([c.get('_name')] if c.get('_name')
+                                                        else list(c.get('_couple') or []))]))
     return {'plates': {}, 'blocks': blocks, 'extra_secs': extra, 'tickers': tickers,
             'hook': hook, 'quote': (quote[1], quote[2], names[quote[0]]) if quote else None,
             'names': who, 'wit': [], 'captions': {i: t for i, t in captions.items()},

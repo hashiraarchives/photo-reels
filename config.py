@@ -87,6 +87,11 @@ DOWNLOAD_WIDTH = 1920         # max px fetched from Commons (API-resolved; never
 GOLDMINE3_CSV = os.path.join(DATA_FOLDER, "goldmine3_links.csv")
 GOLDMINE_CSV = os.path.join(DATA_FOLDER, "goldmine_links.csv")
 GOLDMINE2_CSV = os.path.join(DATA_FOLDER, "goldmine2_links.csv")
+# 2026-10 refill: PD rows the goldmine3 harvester had held back as borderline
+GOLDMINE4_CSV = os.path.join(DATA_FOLDER, "goldmine4_links.csv")
+# 2026-10 life moments (harvest_life.py): real PD beach/bathing-beauty photos,
+# with a life_theme column. Used by themed shorts and themed long-form days.
+GOLDMINE_LIFE_CSV = os.path.join(DATA_FOLDER, "goldmine_life_links.csv")
 
 # === VIDEO SETTINGS ===
 # 1080p since 2026-08 (owner call): 4K roughly quadrupled encode time for
@@ -107,7 +112,8 @@ IMAGE_DURATION = 12        # seconds per image (verified reference-channel pace)
 LOGO_DURATION = 15         # seconds for intro video (intro.mp4)
 VIDEO_LENGTH_MIN = 19      # minutes minimum
 VIDEO_LENGTH_MAX = 22      # minutes maximum
-IMAGES_PER_VIDEO = 100     # default (~20 min 12 sec total)
+IMAGES_PER_VIDEO = 70      # 2026-10: ~14 min (owner: 12-15 min works well; the pool
+                           # could no longer refill 100 photos a day at a 30-day reuse)
 
 # === KEN BURNS EFFECT ===
 ZOOM_MIN = 1.0
@@ -175,7 +181,10 @@ SCHEDULE_TIMES = ["21:00", "03:00"]  # SGT - two runs per day
 # NOT face close-ups. Owner decision: "authentic pinup era" level (real
 # 1940s-50s swimsuit/gown glamour), arrow ON but senior-friendly (bold, white
 # outline). AAP CTR was 2-3% on the elegant-faces diptych; target is 7-10%.
-THUMB_ENABLE_ARROW = True         # bold red arrow w/ white outline (both winners use one)
+THUMB_ENABLE_ARROW = False        # OFF 2026-10 (owner: "not the red arrows"); measured no effect on OWP
+THUMB_INTIMACY = True             # rank thumbnail frames for warmth: kiss/embrace/dance/beach/evening out
+THUMB_FACE_PROXIMITY = True       # ...plus two faces touching (OpenCV Haar, free); skipped if cv2 missing
+THUMB_WARMTH = 0.35               # subtle warm tone over B&W (0 = neutral; July's sepia was ~1.0)
 THUMB_ENABLE_TEXT = False         # on-thumbnail word + subtext OFF — image sells it.
 THUMB_TEXT_WORD = None            # if THUMB_ENABLE_TEXT, force this single ALL-CAPS word (else rotate)
 THUMB_GREYSCALE_RATIO = 0.0       # 0.0 = 100% warm color. Warm tones read better for 65+ eyes.
@@ -260,6 +269,7 @@ PHASE_B_VARIANT = {              # overrides applied to the VARIANT arm only (pa
 # Applied post-download in create_slideshow. Rejected rows are blacklisted
 # (marked used) so the pool self-cleans; over-selection compensates.
 IMG_MIN_LONG_EDGE = 1200   # px; reject smaller (upscales look soft at 4K). 0 = off
+LONGFORM_MAX_UPSCALE = 1.3 # long-form also accepts smaller photos needing <=1.3x to fit 1080p
 IMG_MAX_ASPECT = 2.4       # reject panoramas/strips/documents. 0 = off
 IMG_MIN_SHARPNESS = 0      # edge-variance floor; 0 = OFF (grain fools the metric on
                            # vintage scans — calibration 2026-07; use only if needed)
@@ -370,6 +380,8 @@ SHORT_HISTORY_PROMPTS = [          # end-card questions (no apostrophes or colon
 LONGFORM_CHRONOLOGICAL = True      # photos run oldest to newest (star block first)
 LONGFORM_ERA_CARDS = True          # a chapter card at each new era
 LONGFORM_SERIF_CAPTIONS = True     # long-form captions in the vintage serif too
+LONGFORM_THEME_RATE = 0.35         # share of long-form days told as a life-moments theme
+                                   # (screen couples, bathing beauties) when the pool can fill it
 ERA_CARD_DURATION = 6              # seconds per chapter card
 LONGFORM_HISTORY_EVERY = 8         # a "That year, ..." line on about 1 photo in 8
 PLAYLIST_BACKFILL_PER_RUN = 4      # past videos added to empty star playlists per run (50 quota each)

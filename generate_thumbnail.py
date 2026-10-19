@@ -253,6 +253,93 @@ _FIGURE_HINT = re.compile(
     r'chorus|gown|evening dress|stocking|fishnet|shorts|cheesecake|full[- ]length|'
     r'figure|posing|glamour)\b', re.I)
 
+# --- INTIMACY & WARMTH (owner, 2026-10, after the Golden Frame Hollywood study) --
+# Their winners are real moments: a kiss, an embrace, a couple dancing, a day
+# at the beach, a candlelit table. A thumbnail is now ranked for that warmth
+# first -- always a REAL photo that is in the video, never a generated or
+# altered one, and never voyeuristic.
+_INTIMATE_HINT = [
+    (re.compile(r'\b(kiss|kisses|kissing|embrace|embraces|embracing|hug|hugs|hugging|'
+                r'romance|romantic|love scene|in love|sweethearts?|honeymoon|wedding|bride|'
+                r'newlyweds?|married|husband|wife)\b', re.I), 3.0),
+    (re.compile(r'\b(dancing|dances|dance|waltz|tango)\b', re.I), 2.0),
+    (re.compile(r'\b(beach|bathing|bathers?|swimsuit|swimwear|pool|seaside|surf|sunbath\w*|'
+                r'bathing beauty|bathing beauties)\b', re.I), 2.0),
+    (re.compile(r'\b(dinner|supper|candle\w*|nightclub|night club|cocoanut grove|trocadero|'
+                r'party|cocktail|champagne|toast)\b', re.I), 1.5),
+    (re.compile(r'\b(couple|together|with (?:his|her) (?:wife|husband))\b', re.I), 1.0),
+]
+
+
+def _faces(path: str):
+    """Face boxes via OpenCV's bundled Haar cascades (free, local). Returns
+    [] when OpenCV isn't installed -- the keyword signal still works."""
+    try:
+        import cv2
+    except Exception:
+        return []
+    try:
+        img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
+        if img is None:
+            return []
+        s = 700.0 / max(img.shape[:2])
+        if s < 1:
+            img = cv2.resize(img, None, fx=s, fy=s)
+        img = cv2.equalizeHist(img)
+        boxes = []
+        W = img.shape[1]
+        # frontal faces, then profiles facing either way (the profile cascade
+        # only knows one direction, so it also runs on the mirrored image):
+        # an embrace is two faces turned toward each other
+        passes = [('haarcascade_frontalface_default.xml', False, 6),
+                  ('haarcascade_profileface.xml', False, 4),
+                  ('haarcascade_profileface.xml', True, 4)]
+        for name, mirror, neigh in passes:
+            cc = cv2.CascadeClassifier(cv2.data.haarcascades + name)
+            src = cv2.flip(img, 1) if mirror else img
+            found = cc.detectMultiScale(src, scaleFactor=1.1, minNeighbors=neigh,
+                                        minSize=(int(W * 0.06),) * 2)
+            for (x, y, w, h) in (found if len(found) else []):
+                if mirror:
+                    x = W - x - w
+                # drop a hit that duplicates one already found
+                if not any(abs(x - bx) < w * 0.5 and abs(y - by) < h * 0.5 for bx, by, bw, bh in boxes):
+                    boxes.append((int(x), int(y), int(w), int(h)))
+        return boxes
+    except Exception:
+        return []
+
+
+def intimacy_score(path: str, hint: str = '') -> float:
+    """How warm and intimate a frame is: caption/filename words for a kiss,
+    embrace, dance, beach or evening out, plus two detected faces close
+    enough to touch (a kiss or an embrace)."""
+    score = sum(w for rx, w in _INTIMATE_HINT if rx.search(hint or ''))
+    try:
+        import star_data as sd
+        if sd.screen_couple(hint):
+            score += 1.5          # a named actress and actor together: a screen couple
+    except Exception:
+        pass
+    faces = _faces(path) if getattr(config, 'THUMB_FACE_PROXIMITY', True) else []
+    if len(faces) >= 2:
+        faces = sorted(faces, key=lambda b: b[2] * b[3], reverse=True)[:2]
+        (x1, y1, w1, h1), (x2, y2, w2, h2) = faces
+        gap = max(x1, x2) - min(x1 + w1, x2 + w2)          # <0 means overlap
+        size = (w1 + w2) / 2.0
+        vgap = abs((y1 + h1 / 2) - (y2 + h2 / 2))
+        hsep = abs((x1 + w1 / 2) - (x2 + w2 / 2))
+        # two people face to face are similar in size, level, and beside
+        # each other -- stacked or mismatched boxes are a false detection
+        # (a lamp, a pattern) on the same person (calibrated on test frames)
+        pair = (max(w1, w2) / max(1, min(w1, w2)) <= 1.6 and vgap < 0.6 * size
+                and hsep > 0.4 * size)
+        if pair and gap < 0.35 * size:
+            score += 2.5                                    # cheek to cheek
+        elif pair and gap < 1.5 * size:
+            score += 1.0                                    # a couple, side by side
+    return score
+
 
 def _subject_point(img: Image.Image) -> Tuple[float, float]:
     """
@@ -424,6 +511,14 @@ def _grade(img: Image.Image, greyscale: bool = False) -> Image.Image:
         g = g.point(_SCURVE_DEEP)
         g = ImageEnhance.Brightness(g).enhance(1.05)
         img = g.convert('RGB')
+        warmth = float(getattr(config, 'THUMB_WARMTH', 0.0))
+        if warmth > 0:
+            # 2026-10 (owner: "nostalgic warmth"): a SUBTLE warm tone over the
+            # B&W -- a fraction of a sepia toning, not the July muddy-yellow
+            # cast (sat 128) that the regrade above removed.
+            toned = ImageOps.colorize(g, black=(18, 12, 6), mid=(140, 120, 96),
+                                      white=(255, 247, 230))
+            img = Image.blend(img, toned, min(warmth, 1.0))
 
     return ImageEnhance.Sharpness(img).enhance(1.35)
 
@@ -639,6 +734,7 @@ def _pick_split_pair(paths: List[str], names: Optional[List[str]] = None) -> Lis
     remaining DIFFERENT-subject frame takes the other.
     """
     scored = []
+    intimate = {}
     for i, p in enumerate(paths[:8]):
         try:
             if _looks_like_print_matter(p) or _looks_like_line_art(p):
@@ -646,6 +742,7 @@ def _pick_split_pair(paths: List[str], names: Optional[List[str]] = None) -> Lis
             hint = (names[i] if names and i < len(names) else '') or ''
             key = ' '.join(hint.lower().split()[:2])  # subject fingerprint
             figure = bool(_FIGURE_HINT.search(hint))
+            intimate[p] = intimacy_score(p, hint) if getattr(config, 'THUMB_INTIMACY', False) else 0.0
             scored.append((_frame_score(p), p, key, figure))
         except Exception:
             continue
@@ -653,6 +750,15 @@ def _pick_split_pair(paths: List[str], names: Optional[List[str]] = None) -> Lis
         # Not enough clean frames — fall back to the raw list rather than fail.
         return [p for _, p, _, _ in scored] or paths[:2]
     scored.sort(key=lambda t: t[0], reverse=True)
+
+    # 2026-10: the warmest real moment (a kiss, an embrace, a dance, a beach
+    # day) leads the diptych; a different warm frame takes the other panel.
+    if any(v >= 2.0 for v in intimate.values()):
+        scored.sort(key=lambda t: (intimate.get(t[1], 0.0), t[0]), reverse=True)
+        first = scored[0]
+        rest = [s for s in scored[1:] if not s[2] or s[2] != first[2]] or scored[1:]
+        print(f"  Diptych by intimacy: {[(os.path.basename(s[1]), round(intimate.get(s[1], 0), 1)) for s in scored[:4]]}")
+        return [first[1], rest[0][1]]
 
     figures = [s for s in scored if s[3]]
     if figures:
