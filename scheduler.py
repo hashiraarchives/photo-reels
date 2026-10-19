@@ -220,6 +220,9 @@ def run_short_pipeline(upload: bool = True, privacy: str = None,
             schedule_time=schedule_time,
             star=(metadata.get('focus_star') or '').strip(),
             is_short=True,
+            log_info={'format': metadata.get('short_kind') or 'montage',
+                      'theme': metadata.get('theme_key') or '',
+                      'years': metadata.get('years') or []},
         )
         if video_id:
             logger.info(f"Short uploaded: https://youtube.com/shorts/{video_id}")
@@ -572,6 +575,15 @@ if __name__ == "__main__":
         logger.info(f"=== DAILY MODE: {n_shorts} shorts + {n_long} long-form ===")
         logger.info("=" * 60)
 
+        # Read-only snapshot of recent uploads' public counts (~6 quota units),
+        # so formats can be compared at the same age. Never blocks the run.
+        if getattr(config, 'STATS_SNAPSHOT', False):
+            try:
+                from youtube_uploader import snapshot_stats
+                snapshot_stats()
+            except Exception as e:
+                logger.warning(f"Stats snapshot skipped: {e}")
+
         ok_short = 0
         for i in range(n_shorts):
             pub = short_pub(i)
@@ -595,6 +607,15 @@ if __name__ == "__main__":
                 ok_long += 1
             else:
                 logger.warning(f"Long-form {i + 1} failed; continuing")
+
+        # Fill a few EMPTY star playlists with past videos (capped: 50 quota
+        # units per add, and the uploads above need most of the day's 10,000).
+        if ok_short or ok_long:
+            try:
+                from youtube_uploader import backfill_star_playlists
+                backfill_star_playlists(budget=int(getattr(config, 'PLAYLIST_BACKFILL_PER_RUN', 0)))
+            except Exception as e:
+                logger.warning(f"Playlist backfill skipped: {e}")
 
         if ok_short or ok_long:
             with open(ledger_path, 'w', encoding='utf-8') as f:

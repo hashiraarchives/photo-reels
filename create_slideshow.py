@@ -22,6 +22,7 @@ import tempfile
 import shutil
 import time
 import asyncio
+import functools
 from datetime import datetime
 from typing import List, Dict, Optional, Tuple
 import requests
@@ -56,9 +57,35 @@ _JUNK_TERMS = (
 
 
 def _passes_quality(row: Dict) -> bool:
-    """True if the row looks like a real photo of a person, not promotional graphics."""
-    t = ((row.get('image_filename') or '') + ' ' + (row.get('source_category') or '')).lower()
-    return not any(term in t for term in _JUNK_TERMS)
+    """True if the row looks like a real photo of a person, not promotional
+    graphics -- and not a childhood photo or an off-topic portrait."""
+    fn, cat = row.get('image_filename') or '', row.get('source_category') or ''
+    t = (fn + ' ' + cat).lower()
+    if any(term in t for term in _JUNK_TERMS):
+        return False
+    return _passes_subject(fn, cat)
+
+
+@functools.lru_cache(maxsize=20000)
+def _passes_subject(fn: str, cat: str) -> bool:
+    """Subject rules (2026-10 audit). The curated pool holds ~150 Carl Van
+    Vechten portraits, mostly writers, singers and athletes: only the ones of a
+    known screen star belong here. And ~20 childhood photos of later stars
+    ("Jean Harlow (taken at age 3)", "Baby Gumm") were reaching shorts tagged
+    for glamour, where a caption could call a toddler a 'Blonde Bombshell'."""
+    import star_data as sd
+    name = sd.identify(fn, cat)
+    if 'van vechten' in (fn + ' ' + cat).lower() and not name:
+        return False
+    m = _ROW_YEAR_RE.search(fn + ' ' + cat)
+    # A modern photo with no vintage year at all ("Las Vegas 2025 (...)" sits
+    # in the bulk pool) is not old Hollywood; "Monroe 1953 (restored 2015)" is.
+    if not m and re.search(r'\b(199\d|20[0-3]\d)\b', fn):
+        return False
+    return not sd.is_child_photo(fn + ' ' + cat, name, int(m.group(1)) if m else None)
+
+
+_ROW_YEAR_RE = re.compile(r'\b(18[89]\d|19[0-8]\d)\b')
 
 
 _PERMANENT_MARKS = ('GONE', 'LOWRES', 'REJECT', 'TRUE')
@@ -252,7 +279,8 @@ def select_unused_images(count: int = config.IMAGES_PER_VIDEO,
                          star_min_rows: Optional[int] = None,
                          reuse_days: Optional[int] = None,
                          for_shorts: bool = False,
-                         star_episode: bool = True
+                         star_episode: bool = True,
+                         row_filter=None
                          ) -> List[Dict]:
     """
     Select unused, quality (real-photo) images across the goldmine CSVs,
@@ -274,7 +302,8 @@ def select_unused_images(count: int = config.IMAGES_PER_VIDEO,
             continue
         usable = [r for r in rows
                   if (_short_available(r, reuse_days or 14) if for_shorts
-                      else _row_is_available(r, reuse_days)) and _passes_quality(r)]
+                      else _row_is_available(r, reuse_days)) and _passes_quality(r)
+                  and (row_filter is None or row_filter(r))]
         pools.append((os.path.basename(path), usable))
 
     selected: List[Dict] = []
@@ -830,6 +859,7 @@ async def download_with_browser(images: List[Dict], temp_dir: str,
                     'caption': img.get('generated_caption', ''),
                     'filename': img.get('image_filename', ''),
                     'category': img.get('source_category', ''),
+                    'date': img.get('date') or '',
                     'index': i,
                     'portrait': _is_portrait(download_path),
                 })
@@ -1083,7 +1113,9 @@ def _build_caption_filter(wrap_info: Dict, caption_file_path: str) -> str:
     with open(caption_file_path, 'w', encoding='utf-8', newline='') as f:
         f.write(wrap_info['text'])
 
-    font_path = _ffmpeg_escape_path(config.CAPTION_FONT_FILE)
+    serif = getattr(config, 'LONGFORM_SERIF_CAPTIONS', False)
+    font_path = _ffmpeg_escape_path(getattr(config, 'SERIF_FONT_FILE', config.CAPTION_FONT_FILE)
+                                    if serif else config.CAPTION_FONT_FILE)
     text_path = _ffmpeg_escape_path(caption_file_path)
 
     # Prestige caption look: pristine WHITE text with a bold BLACK OUTLINE
@@ -1091,7 +1123,9 @@ def _build_caption_filter(wrap_info: Dict, caption_file_path: str) -> str:
     # with the font so it reads as a clean edge, not a thin grey halo. The dark
     # bar is OFF by default (CAPTION_BAR) — the outline carries contrast on its own.
     fs = wrap_info['font_size']
-    outline = max(3, int(fs * getattr(config, 'CAPTION_OUTLINE_RATIO', 0.085)))
+    # serif strokes are finer: a sans-weight outline would smear them
+    ratio = 0.06 if serif else getattr(config, 'CAPTION_OUTLINE_RATIO', 0.085)
+    outline = max(3, int(fs * ratio))
     shadow = max(2, outline // 2)
 
     layers = []
@@ -1210,29 +1244,246 @@ def _montage_long_captions(images: List[Dict]) -> None:
     the same star get name, film and year, so a star episode doesn't repeat
     one fact fifteen times. Unidentified photos keep their existing caption."""
     import star_data as sd
+    import history_data as hd
     seen: Dict[str, int] = {}
-    n_done = 0
-    for img in images:
+    n_done = n_ctx = n_cleared = 0
+    # HISTORY LENS (2026-10): about one photo in LONGFORM_HISTORY_EVERY also
+    # places itself in history -- "Clara Bow, 1927. That year, The Jazz Singer
+    # brought spoken dialogue to the movies." -- each event at most once.
+    every = max(0, int(getattr(config, 'LONGFORM_HISTORY_EVERY', 0)))
+    budget = (len(images) // every) if every else 0
+    used_ev = set()
+    for idx, img in enumerate(images):
         raw = img.get('generated_caption') or ''
         name = sd.identify(img.get('image_filename'), img.get('source_category'), raw)
+        clip = {'date': img.get('date'), 'filename': img.get('image_filename'),
+                'caption': raw, 'category': img.get('source_category')}
+        year = hd.photo_year(clip, name)
         if not name:
+            # Unidentified: never ship raw archive text ("of actress Claire
+            # Luce LCCN2004663221 (1964) band Edward Judson"). Say what we can
+            # stand behind -- a person and year, the film, or the studio -- or
+            # nothing.
+            img['generated_caption'] = _plain_caption(raw, img.get('source_category') or '', year)
+            n_cleared += 1
             continue
-        year = None
-        for field in (raw, img.get('image_filename') or '', img.get('date') or ''):
-            m = re.search(r'\b(18[89]\d|19[0-8]\d)\b', str(field))
-            if m and sd.plausible_year(name, int(m.group(1))):
-                year = int(m.group(1))
-                break
         k = seen.get(name, 0)
         seen[name] = k + 1
-        if k < len(sd.facts_for(name)):
+        ev = hd.year_event(year, seed=idx) if (year and n_ctx < budget) else None
+        # (never on a star's first photo: that one carries their light detail)
+        if ev and ev not in used_ev and name.split()[-1].lower() not in ev.lower() and k >= 1:
+            used_ev.add(ev)
+            n_ctx += 1
+            img['generated_caption'] = f"{name}, {year}. That year, {ev}."
+        elif k < len(sd.facts_for(name)):
             img['generated_caption'] = sd.montage_caption(name, year, seed=k)
         else:
             film = re.search(r'in "([^"]+)"', raw)
             film = f' in "{film.group(1)}"' if film else ''
             img['generated_caption'] = f"{name}{film}, {year}." if year else f"{name}{film}."
         n_done += 1
-    print(f"  Montage captions: {n_done}/{len(images)} photos identified and captioned")
+    print(f"  Montage captions: {n_done}/{len(images)} identified ({n_ctx} with a history line), "
+          f"{n_cleared} unidentified made plain")
+
+
+_STUDIO_CAT = re.compile(r'^Category:(Paramount Pictures|Universal Pictures|RKO Pictures|Warner Bros\.|'
+                         r'20th Century Fox|Columbia Pictures|Metro-Goldwyn-Mayer|United Artists)'
+                         r' (publicity photos|films|live-action films)$')
+
+
+def _plain_caption(raw: str, category: str, year: Optional[int]) -> str:
+    """Caption for a photo we can't attach to a known star."""
+    import star_data as sd
+    m = re.match(r'^([A-Z][\w.\'-]+(?: [A-Z][\w.\'-]+){1,3}) in "([^"]{2,40})" \((\d{4})\)$',
+                 (raw or '').strip())
+    if m and not sd._JUNK.search(raw) and sd.looks_like_person(m.group(1)):
+        return f'{m.group(1)} in "{m.group(2)}", {m.group(3)}.'
+    named = sd.montage_caption(None, None, raw)          # "Dorothy Dalton, 1920."
+    if named:
+        return named
+    s = _STUDIO_CAT.match(category or '')
+    # A studio still whose caption is just a Title Case film name and year
+    # ("My Man Godfrey (1936)") is from that film.
+    t = re.match(r"^((?:[A-Z0-9][\w'!?,.-]*|of|the|a|an|and|in|on|to|for|at)"
+                 r"(?: (?:[A-Z0-9][\w'!?,.-]*|of|the|a|an|and|in|on|to|for|at)){0,6}) \((\d{4})\)$",
+                 (raw or '').strip())
+    if s and t and not sd.looks_like_person(t.group(1)) and not sd._JUNK.search(raw) \
+            and not re.search(r'(?i)\b(portrait|photo|still|publicity|actress|actor|studio)\b', t.group(1)):
+        return f"From {t.group(1)} ({t.group(2)})."
+    if s:
+        if 'publicity' not in s.group(2):
+            # a studio's "films" category also holds posters: name the studio only
+            return f"{s.group(1)}, {year}." if year else ''
+        art = 'An' if s.group(1).startswith('RKO') else 'A'
+        return f"{art} {s.group(1)} publicity photo, {year}." if year else f"{art} {s.group(1)} publicity photo."
+    # A film's own category -- only when Commons marks it as a film,
+    # "Ben-Hur (1925 film)" -- never a collection like "Library of Congress".
+    f = re.match(r'^Category:(.+?) \((?:(\d{4}) )?[\w ]*film\)$', category or '')
+    if f and not re.search(r'(?i)\b(films|photos|photographs|collection|library)\b', f.group(1)):
+        film, fy = f.group(1).strip(), f.group(2) or (str(year) if year else '')
+        return f"From {film} ({fy})." if fy else f"From {film}."
+    return ''
+
+
+# =============================================================================
+# HISTORY LENS for long-form (owner, 2026-10): a curated flow of events
+# =============================================================================
+def _clip_blob(c: Dict) -> str:
+    return ' '.join(str(c.get(k) or '') for k in ('filename', 'caption', 'category')).lower()
+
+
+def _order_chronologically(clips: List[Dict], focus: str) -> List[Dict]:
+    """Opening face first, then (on a star episode) the star's photos oldest
+    to newest, then everyone else oldest to newest. Undated photos go last."""
+    import star_data as sd
+    import history_data as hd
+    fl = (focus or '').lower()
+    for c in clips:
+        name = sd.identify(c.get('filename'), c.get('category'), c.get('caption'))
+        c['_name'] = name
+        c['_year'] = hd.photo_year(c, name)
+        c['_ay'] = c['_year'] or hd.approx_year(c, name)
+        c['_star'] = bool(fl) and (fl in _clip_blob(c) or fl.split()[-1] in _clip_blob(c))
+    key = lambda c: (c['_ay'] or 3000)
+
+    # The opening frame decides whether anyone stays: a named, solo leading
+    # lady in a portrait-shaped photo -- the focus star on a star episode.
+    def open_score(c):
+        lady = bool(c['_name']) and sd.star_gender(c['_name']) == 'f'
+        solo = not re.search(r'\b(and|with)\b|&', (c.get('filename') or ''))
+        return (c['_star'], lady and solo, solo, bool(c.get('portrait')), len(c.get('caption') or ''))
+    opener = max(clips, key=open_score)
+    star = sorted((c for c in clips if c['_star'] and c is not opener), key=key)
+    rest = sorted((c for c in clips if not c['_star'] and c is not opener), key=key)
+    opener['_open'] = True
+    print(f"  Chronological order: opener {(opener.get('filename') or '?')[:50]}, "
+          f"{len(star)} star photos, {len(rest)} others "
+          f"({sum(1 for c in clips if c['_year'])} dated)")
+    return [opener] + star + rest
+
+
+def _build_sequence(clips: List[Dict], focus: str) -> List[Tuple[str, Dict]]:
+    """Insert chapter cards: one for the star block, then one per era (only
+    for an era that fills at least 3 photos -- a card followed by a single
+    photo reads as a glitch)."""
+    import star_data as sd
+    import history_data as hd
+    seq: List[Tuple[str, Dict]] = []
+    n_card = 0
+    body = [c for c in clips if not c.get('_open')]
+    seq += [('photo', c) for c in clips if c.get('_open')]
+    star = [c for c in body if c.get('_star')]
+    rest = [c for c in body if not c.get('_star')]
+    if star and focus:
+        ys = [c['_year'] for c in star if c.get('_year')]
+        facts = sd.facts_for(focus)
+        n_card += 1
+        seq.append(('card', {'kicker': f"CHAPTER {n_card}",
+                             'years': f"{min(ys)} – {max(ys)}" if len(ys) >= 2 and max(ys) > min(ys) else '',
+                             'title': focus, 'lines': facts[:2], 'bg': star[0].get('orig') or star[0].get('path')}))
+        seq += [('photo', c) for c in star]
+    # group the rest by era (approximate years place undated stars sensibly)
+    groups: List[Tuple[Optional[Dict], List[Dict]]] = []
+    for c in rest:
+        e = hd.era_for(c.get('_ay'))
+        if groups and (groups[-1][0] or {}).get('key') == (e or {}).get('key'):
+            groups[-1][1].append(c)
+        else:
+            groups.append((e, [c]))
+    for e, members in groups:
+        if e and len(members) >= 3:
+            n_card += 1
+            seq.append(('card', {'kicker': f"CHAPTER {n_card}",
+                                 'years': f"{e['lo']} – {e['hi']}" if e['lo'] >= 1900 else f"Before {e['hi'] + 1}",
+                                 'title': e['title'], 'lines': list(e['lines'][:2]), 'era': e['key'],
+                                 'bg': members[0].get('orig') or members[0].get('path')}))
+        seq += [('photo', c) for c in members]
+    return seq
+
+
+def _card_font(path: str, size: int):
+    from PIL import ImageFont
+    try:
+        return ImageFont.truetype(path, size)
+    except Exception:
+        return ImageFont.truetype(config.CAPTION_FONT_FILE, size)
+
+
+def _make_card_image(spec: Dict, out_path: str) -> bool:
+    """A chapter card in the house vintage style: the era's first photo,
+    blurred and darkened, under gold serif type with thin gold rules."""
+    from PIL import ImageDraw, ImageFilter, ImageEnhance
+    W, H = config.WIDTH, config.HEIGHT
+    s = config.SCALE
+    try:
+        with Image.open(spec.get('bg') or '') as im:
+            bg = im.convert('RGB')
+        r = max(W / bg.width, H / bg.height)
+        bg = bg.resize((int(bg.width * r) + 1, int(bg.height * r) + 1), Image.LANCZOS)
+        bg = bg.crop(((bg.width - W) // 2, (bg.height - H) // 2,
+                      (bg.width - W) // 2 + W, (bg.height - H) // 2 + H))
+        bg = bg.filter(ImageFilter.GaussianBlur(int(26 * s)))
+        bg = ImageEnhance.Color(bg).enhance(0.35)
+        bg = ImageEnhance.Brightness(bg).enhance(0.26)
+    except Exception:
+        bg = Image.new('RGB', (W, H), (10, 9, 8))
+    d = ImageDraw.Draw(bg)
+    gold, white = (226, 194, 122), (238, 234, 226)
+    bold = getattr(config, 'SERIF_FONT_FILE', config.CAPTION_FONT_FILE)
+    reg = getattr(config, 'SERIF_FONT_REGULAR', bold)
+    f_kick, f_years = _card_font(reg, int(30 * s)), _card_font(bold, int(60 * s))
+    f_line = _card_font(reg, int(40 * s))
+    title = spec.get('title', '')
+    tsize = int(96 * s)
+    while tsize > 50 and d.textlength(title, font=_card_font(bold, tsize)) > W * 0.84:
+        tsize -= 4
+    f_title = _card_font(bold, tsize)
+    kick = '  '.join(' '.join(w) for w in spec.get('kicker', '').split())   # letter-spaced caps
+    rows = [(kick, f_kick, gold, int(26 * s)), ('rule', None, gold, int(30 * s))]
+    if spec.get('years'):
+        rows.append((spec['years'], f_years, gold, int(30 * s)))
+    rows.append((title, f_title, white, int(34 * s)))
+    rows.append(('rule', None, gold, int(34 * s)))
+    for ln in spec.get('lines', [])[:2]:
+        rows.append((ln, f_line, (222, 216, 204), int(16 * s)))
+
+    def h_of(t, f):
+        if t == 'rule':
+            return int(3 * s)
+        b = d.textbbox((0, 0), t, font=f)
+        return b[3] - b[1]
+    total = sum(h_of(t, f) + gap for t, f, _, gap in rows)
+    y = (H - total) // 2
+    for t, f, col, gap in rows:
+        if t == 'rule':
+            w = int(260 * s)
+            d.rectangle([(W - w) // 2, y, (W + w) // 2, y + int(2 * s)], fill=col)
+            y += int(3 * s) + gap
+            continue
+        b = d.textbbox((0, 0), t, font=f)
+        x = (W - (b[2] - b[0])) // 2 - b[0]
+        d.text((x + 2, y - b[1] + 2), t, font=f, fill=(0, 0, 0))
+        d.text((x, y - b[1]), t, font=f, fill=col)
+        y += (b[3] - b[1]) + gap
+    bg.save(out_path, 'JPEG', quality=93)
+    return True
+
+
+def _render_card_clip(spec: Dict, out_path: str, duration: float, temp_dir: str) -> bool:
+    img = out_path.replace('.mp4', '.jpg')
+    try:
+        _make_card_image(spec, img)
+    except Exception as e:
+        print(f"  chapter card skipped ({e})")
+        return False
+    cmd = [config.FFMPEG_PATH, '-y', '-loop', '1', '-i', img, '-t', f'{duration:.2f}',
+           '-vf', f"scale={config.WIDTH}:{config.HEIGHT},fps={config.FPS}",
+           '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '21', '-pix_fmt', 'yuv420p', out_path]
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    if r.returncode != 0:
+        print(f"  chapter card render failed: {(r.stderr or '')[-200:]}")
+        return False
+    return True
 
 
 def create_video(images: List[Dict], output_path: str, theme: str = "Classic_Hollywood",
@@ -1340,12 +1591,20 @@ def create_video(images: List[Dict], output_path: str, theme: str = "Classic_Hol
 
         print(f"  Processed {len(image_paths)} images")
 
+        # --- HISTORY LENS (2026-10): a curated flow of events ---------------
+        # Oldest to newest (the star's own photos first on a star episode,
+        # "through the years"), opening on the most recognisable face, with a
+        # chapter card wherever a new era begins.
+        focus = next((im.get('focus_star') for im in images if im.get('focus_star')), '')
+        chrono = getattr(config, 'LONGFORM_CHRONOLOGICAL', False) and len(image_paths) > 1
+        if chrono:
+            image_paths = _order_chronologically(image_paths, focus)
         # --- RETENTION HOOK: promote the strongest image to position 0 ---
         # The opening 5–15 seconds is where viewers decide to keep watching.
         # Move the photo whose caption mentions a recognized celebrity (from
         # the curated KNOWN_STARS set) to the front so the video opens with
         # a familiar face rather than a random photo.
-        if len(image_paths) > 1:
+        elif len(image_paths) > 1:
             try:
                 from youtube_uploader import KNOWN_STARS
 
@@ -1435,7 +1694,14 @@ def create_video(images: List[Dict], output_path: str, theme: str = "Classic_Hol
             return (lady and clean and solo, clean, not_env, solo,
                     pinup, clip.get('portrait', False), star)
 
-        candidates = sorted(image_paths, key=_cand_rank, reverse=True)[:8]
+        # A star episode's thumbnail must show THAT star (the 2026-10 audit found
+        # "Ingrid Bergman" titles over Bergman-less thumbnails): eligible frames
+        # of the focus star rank above every other frame.
+        _fl = (focus or '').lower()
+        def _is_focus(c: Dict) -> bool:
+            return bool(_fl) and (_fl in _clip_blob(c) or _fl.split()[-1] in _clip_blob(c))
+        candidates = sorted(image_paths, key=lambda c: (_cand_rank(c)[0] and _is_focus(c),)
+                            + _cand_rank(c), reverse=True)[:8]
         _lead = candidates[0] if candidates else None
         if _lead is not None:
             _ok = _cand_rank(_lead)[0]
@@ -1523,10 +1789,28 @@ def create_video(images: List[Dict], output_path: str, theme: str = "Classic_Hol
             clip_paths.append(intro_clip)
             clip_durations.append(float(logo_duration))
 
-        # Image clips with Ken Burns and text overlay
-        for i, img_info in enumerate(image_paths):
+        # Image clips with Ken Burns and text overlay, chapter cards between eras
+        if chrono and getattr(config, 'LONGFORM_ERA_CARDS', False):
+            sequence = _build_sequence(image_paths, focus)
+        else:
+            sequence = [('photo', c) for c in image_paths]
+        card_d = float(getattr(config, 'ERA_CARD_DURATION', 6))
+        i = -1
+        for kind_, item in sequence:
+            if kind_ == 'card':
+                cp = os.path.join(temp_dir, f"card_{len(clip_paths):03d}.mp4")
+                if _render_card_clip(item, cp, card_d, temp_dir):
+                    clip_paths.append(cp)
+                    clip_durations.append(card_d)
+                    clip_meta.append({'caption': item['title'], 'filename': '',
+                                      'card': item.get('era') or 'star'})
+                    print(f"  chapter card: {item['kicker']} | {item['title']}")
+                continue
+            i += 1
+            img_info = item
             this_duration = planned_image_duration(i)
-            print(f"  [{i+1}/{len(image_paths)}] Processing clip ({this_duration}s)...")
+            if i % 10 == 0:
+                print(f"  [{i+1}/{len(image_paths)}] Processing clip ({this_duration}s)...")
 
             clip_path = os.path.join(temp_dir, f"clip_{i:03d}.mp4")
 
@@ -1725,11 +2009,14 @@ def create_video(images: List[Dict], output_path: str, theme: str = "Classic_Hol
         for j, meta in enumerate(clip_meta):
             clip_index = j + 1  # offset by the intro at index 0
             if clip_index < len(starts):
-                timeline.append({
+                entry = {
                     'start': round(max(0.0, starts[clip_index]), 1),
                     'caption': meta.get('caption', ''),
                     'filename': meta.get('filename', ''),
-                })
+                }
+                if meta.get('card'):
+                    entry['card'] = meta['card']      # chapter card: era key or 'star'
+                timeline.append(entry)
 
         print(f"\n=== Video created successfully! ===")
         print(f"Output: {output_path}")
@@ -1822,6 +2109,8 @@ def generate_video(image_count: int = config.IMAGES_PER_VIDEO, theme: str = None
                 'image_count': len(video_images),
                 'duration_seconds': actual_duration,
                 'timeline': timeline,   # real per-image start times → accurate chapters
+                # chapter cards in order (era keys) -> the description's short history
+                'eras': [t['card'] for t in timeline if t.get('card') and t['card'] != 'star'],
                 'images': video_images,
                 'created': datetime.now().isoformat()
             }, f, indent=2, ensure_ascii=False)

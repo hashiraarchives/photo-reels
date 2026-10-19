@@ -234,7 +234,7 @@ ENABLE_CHAPTERS = True            # build per-video chapters/timestamps (was gen
 FAST_OPENING_CLIPS = 3            # first N images play shorter for early momentum (promoted from a local)
 FAST_OPENING_DURATION = 10       # seconds for those opening clips (control default; was a local)
 XFADE_DUR = 0.5                  # crossfade seconds (double-coupled to total_duration + chapter timeline)
-INTRO_DURATION_OVERRIDE = None   # None = play the full branded intro.mp4 (current); set N to trim to N seconds
+INTRO_DURATION_OVERRIDE = 4      # seconds of the branded intro.mp4 (None = all 16s); 2026-10: first photo at ~4s
 # Caption STYLE (now the channel standard: succinct text, large, pristine white
 # with a bold black outline — like the prestige reference channels).
 CAPTION_FONT_SCALE = 1.0         # extra multiplier on the (already enlarged) caption fonts
@@ -339,7 +339,68 @@ SHORT_WIT_PER_SHORT = 3
 # Jams", and had short Title Case titles. 'montage' reproduces that; 'playful'
 # brings back the humor hook / one-liners / lower name plate of 2026-09-27.
 SHORT_LAYOUT = 'fit'               # 'fit' = whole photo on black; 'cover' = crop to fill
-SHORT_CAPTION_STYLE = 'montage'    # 'montage' | 'playful'
+SHORT_CAPTION_STYLE = 'history'    # 'history' (2026-10, see HISTORY LENS) | 'montage' | 'playful'
 SHORT_MUSIC_WEIGHTS = {"Soul and Mind": 6, "Nighttime Stroll": 2}   # others weigh 1
-SHORT_TITLE_STYLE = 'classic'      # 'classic' = 2025 hit formula; 'hooky' = 2026-09 hooks
+SHORT_TITLE_STYLE = 'history'      # 'history' (2026-10) | 'classic' = 2025 hit formula | 'hooky'
 LONGFORM_MONTAGE_CAPTIONS = True   # house-style captions for long-form when Gemini is off
+
+# ---------------------------------------------------------------------------
+# HISTORY LENS (owner, 2026-10): "use the lens of history to educate... well
+# packaged historical snippets and a well curated flow of events". Every video
+# walks forward through time: a year ticker, era chapters, "that year..."
+# context lines and themed story shorts. history_data.py holds the facts.
+# Each switch below reverts one piece.
+# ---------------------------------------------------------------------------
+SHORT_THEME_RATE = 0.4             # share of shorts told as a themed story (WWII, talkies...)
+SHORT_HISTORY_CLIPS = 12           # cold open + 11 photos in date order (~54s with the history lines)
+SHORT_HISTORY_HOOK_DURATION = 4.0  # the cold open carries the short's promise: give it time to read
+SHORT_HISTORY_IMAGE_DURATION = 4.4 # per photo; "That year" lines get +0.9s, the quote up to +1.5s
+SHORT_HISTORY_LINES = 3            # "That year, ..." context lines per short
+SHORT_TICKER = True                # gold year + era label in the bar above the photo
+SHORT_KEYLINE = True               # thin gold frame line around the photo (vintage print look)
+SHORT_FILM_GRAIN = True            # faint moving film grain
+SHORT_PHOTO_MAX_H = 0.76           # photo height cap (leaves room for the ticker above)
+SHORT_CAPTION_WIDTH = 840          # px; keeps captions clear of the Shorts like/comment rail
+SHORT_HISTORY_PROMPTS = [          # end-card questions (no apostrophes or colons)
+    ("Which decade was the best?", "Tell us in the comments"),
+    ("Which era would you visit?", "Tell us in the comments"),
+    ("Who did we miss?", "Name a star below"),
+    ("Remember these faces?", "Share a memory below"),
+]
+LONGFORM_CHRONOLOGICAL = True      # photos run oldest to newest (star block first)
+LONGFORM_ERA_CARDS = True          # a chapter card at each new era
+LONGFORM_SERIF_CAPTIONS = True     # long-form captions in the vintage serif too
+ERA_CARD_DURATION = 6              # seconds per chapter card
+LONGFORM_HISTORY_EVERY = 8         # a "That year, ..." line on about 1 photo in 8
+PLAYLIST_BACKFILL_PER_RUN = 4      # past videos added to empty star playlists per run (50 quota each)
+STATS_SNAPSHOT = True              # daily read-only stats of recent uploads -> seed_data/stats/
+
+
+def _first_font(cands):
+    """First existing font file; on Linux, also search the font tree."""
+    for p in cands:
+        if p and os.path.exists(p):
+            return p
+    import glob
+    for pat in ('/usr/share/fonts/**/P052-Bold.otf', '/usr/share/fonts/**/DejaVuSerif-Bold.ttf'):
+        hits = glob.glob(pat, recursive=True)
+        if hits:
+            return hits[0]
+    return CAPTION_FONT_FILE
+
+
+# Vintage serif for the ticker, era cards and history captions: P052 (a
+# Palatino design, fonts-urw-base35) on the runner, DejaVu Serif if that
+# package is missing, Palatino/Georgia on Windows.
+SERIF_FONT_FILE = _first_font([
+    '/usr/share/fonts/opentype/urw-base35/P052-Bold.otf',
+    '/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf',
+    r'C:\Windows\Fonts\palab.ttf',
+    r'C:\Windows\Fonts\georgiab.ttf',
+])
+SERIF_FONT_REGULAR = _first_font([
+    '/usr/share/fonts/opentype/urw-base35/P052-Roman.otf',
+    '/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf',
+    r'C:\Windows\Fonts\pala.ttf',
+    r'C:\Windows\Fonts\georgia.ttf',
+])

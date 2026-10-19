@@ -36,6 +36,11 @@ jobs:
       - name: Install ffmpeg
         run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg fonts-dejavu-core
 
+      - name: Install vintage serif font
+        # P052 (a Palatino design) for the year ticker, chapter cards and
+        # captions. Optional: config falls back to DejaVu Serif without it.
+        run: sudo apt-get install -y -qq fonts-urw-base35 || echo "fonts-urw-base35 unavailable; using DejaVu Serif"
+
       - name: Install Python deps
         run: |
           python -m pip install --upgrade pip

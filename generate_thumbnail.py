@@ -764,9 +764,13 @@ def generate_thumbnail_and_title(metadata_path: str) -> Dict:
             eligible = [img['local_orig'] for img in _with_paths
                         if img.get('thumb_eligible')
                         and img.get('local_orig') and os.path.exists(img['local_orig'])]
-            pool = eligible or video_origs
+            # 2026-10: never an ungated frame (a theatre crowd, line art and a
+            # child all shipped that way); no eligible frame -> curated pool.
+            pool = eligible
             print(f"  Thumbnail pool: {len(eligible)} eligible / {len(video_origs)} persisted"
-                  f"{'' if eligible else ' — no leading-lady frame, using fallback pool'}")
+                  f"{'' if eligible else ' — no leading-lady frame, using the curated pool'}")
+            if not pool:
+                raise ValueError("no eligible frame")
             scored = []
             for p in pool[:8]:
                 try:
@@ -788,15 +792,27 @@ def generate_thumbnail_and_title(metadata_path: str) -> Dict:
         _elig = [img for img in _with_paths
                  if img.get('thumb_eligible') and img.get('local_orig')
                  and os.path.exists(img['local_orig'])]
-        _src = _elig or [img for img in _with_paths
-                         if img.get('local_orig') and os.path.exists(img['local_orig'])]
-        split_paths = [img['local_orig'] for img in _src] or video_imgs
+        # Gated frames only (2026-10): with none, fall through to the curated
+        # pool rather than an arbitrary frame of the video.
+        _src = _elig
+        split_paths = [img['local_orig'] for img in _src]
         split_hints = [(img.get('generated_caption') or img.get('image_filename') or '')
-                       for img in _src] or video_hints
+                       for img in _src]
         print(f"  Diptych pool: {len(_elig)} eligible / {len(_with_paths)} persisted"
-              f"{'' if _elig else ' — no leading-lady frame, using fallback pool'}")
+              f"{'' if _elig else ' — no leading-lady frame, using the curated pool'}")
     if not thumb_rendered and len(split_paths) >= 2:
         pair = _pick_split_pair(split_paths, names=split_hints)
+        # A star episode's thumbnail shows the star: if the pair picker chose
+        # two other faces, swap the weaker panel for the star's best frame.
+        focus = (metadata.get('focus_star') or '').strip().lower()
+        if focus:
+            is_star = lambda p: any(focus.split()[-1] in h.lower()
+                                    for q, h in zip(split_paths, split_hints) if q == p)
+            if not any(is_star(p) for p in pair):
+                star_ps = [p for p in split_paths if is_star(p)]
+                if star_ps:
+                    pair = [star_ps[0], pair[0]]
+                    print(f"  Diptych: swapped in a {metadata.get('focus_star')} frame")
         try:
             create_split_thumbnail(pair, thumbnail_path)
             print(f"  Split thumbnail from compilation frames: {[os.path.basename(p) for p in pair]}")
@@ -820,7 +836,20 @@ def generate_thumbnail_and_title(metadata_path: str) -> Dict:
         except Exception as e:
             print(f"  Single gated-original thumbnail failed ({e}); falling back to canvas")
 
-    # 3) Single real compilation frame (canvas).
+    # 3) Single real compilation frame (canvas) -- UNGATED, so now only when
+    # no curated portrait exists either (see 4, which runs first).
+    if not thumb_rendered:
+        star = (metadata.get('focus_star') or '').strip()
+        portrait_image = (get_portrait_for_star(star) if star else None) or get_curated_portrait()
+        if portrait_image:
+            try:
+                create_thumbnail(portrait_image, thumbnail_path, title_text=thumbnail_text,
+                                 text_color=text_color)
+                _record_recent(portrait_image)
+                print(f"  Thumbnail subject (curated, no gated frame): {os.path.basename(portrait_image)}")
+                thumb_rendered = True
+            except Exception as e:
+                print(f"  Curated thumbnail failed ({e})")
     if not thumb_rendered and video_imgs:
         try:
             create_thumbnail(video_imgs[0], thumbnail_path, title_text=thumbnail_text, text_color=text_color)

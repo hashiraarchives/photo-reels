@@ -12,6 +12,7 @@ import sys
 import json
 import re
 import hashlib
+import time
 from datetime import datetime, timedelta
 from typing import Optional, Dict, List
 import config
@@ -353,8 +354,53 @@ def _title_shingles(title: str, n: int = 5) -> set:
     return {' '.join(w[i:i + n]) for i in range(len(w) - n + 1)}
 
 
+# Every title the channel has ever published ([video_id, title], newest first),
+# seeded from the channel's upload list on 2026-10-19 and appended on each
+# upload. The 2026-10 audit found shorts reusing 2025 titles word for word
+# ("Most Beautiful Actresses in Rare Moments" x4): a 25-title memory can't see
+# that far back, and identical titles are part of the mass-produced profile.
+TITLE_HISTORY = os.path.join(config.DATA_FOLDER, 'title_history.json')
+_HISTORY_CACHE: Optional[List[list]] = None
+
+
+def _norm_title(t: str) -> str:
+    t = re.sub(r'#shorts', '', (t or '').lower())
+    return ' '.join(re.sub(r'[^a-z0-9 ]', ' ', t).split())
+
+
+def load_title_history() -> List[list]:
+    global _HISTORY_CACHE
+    if _HISTORY_CACHE is None:
+        try:
+            with open(TITLE_HISTORY, encoding='utf-8') as f:
+                _HISTORY_CACHE = [x for x in json.load(f) if isinstance(x, list) and len(x) == 2]
+        except Exception:
+            _HISTORY_CACHE = []
+    return _HISTORY_CACHE
+
+
+def record_title_history(video_id: str, title: str):
+    hist = load_title_history()
+    hist.insert(0, [video_id, title])
+    try:
+        with open(TITLE_HISTORY, 'w', encoding='utf-8') as f:
+            f.write('[\n' + ',\n'.join(json.dumps(x, ensure_ascii=False) for x in hist) + '\n]\n')
+    except Exception as e:
+        print(f"  Could not update title history: {e}")
+
+
+def title_used_before(title: str) -> bool:
+    """True if the channel has EVER published this exact title (case,
+    punctuation and #Shorts ignored)."""
+    n = _norm_title(title)
+    return any(_norm_title(t) == n for _, t in load_title_history())
+
+
 def is_title_too_similar(title: str) -> bool:
-    """True if this title reuses a recent title's opening or a distinctive phrase."""
+    """True if this title was ever used, or reuses a recent title's opening or
+    a distinctive phrase."""
+    if title_used_before(title):
+        return True
     avoid_n = getattr(config, 'TITLE_RECENT_AVOID', 25)
     recent = load_recent_titles()[-avoid_n:]
     if not recent:
@@ -400,6 +446,25 @@ def _has_candid(metadata: Dict) -> bool:
     return hits >= max(3, 0.15 * len(imgs))
 
 
+def _star_span(metadata: Dict, star: str) -> str:
+    """'(1937-1958)': the real year range of THIS star's dated photos in the
+    video, or '' when fewer than two years are known."""
+    import star_data as sd
+    sl = star.lower()
+    ys = []
+    for img in metadata.get('images', []):
+        blob = ' '.join(str(img.get(k) or '') for k in
+                        ('generated_caption', 'image_filename', 'source_category', 'date')).lower()
+        if sl not in blob and sl.split()[-1] not in blob:
+            continue
+        for field in ('date', 'image_filename', 'generated_caption'):
+            m = _YEAR_RE.search(str(img.get(field) or ''))
+            if m and sd.plausible_year(star, int(m.group(1))):
+                ys.append(int(m.group(1)))
+                break
+    return f"({min(ys)}-{max(ys)})" if len(ys) >= 2 and max(ys) - min(ys) >= 3 else ''
+
+
 def build_fallback_title(metadata: Dict) -> str:
     """
     Fallback title (Gemini-unavailable path). CURIOSITY-HOOK house style — the
@@ -421,7 +486,21 @@ def build_fallback_title(metadata: Dict) -> str:
     # 0.66x. Candid wording scored 1.37x but only goes on videos that really
     # contain candid material (see _has_candid) -- a studio-portrait video sold
     # as "caught off guard" is the promise mismatch that sank the channel in May.
-    templates = [
+    # HISTORY LENS (2026-10): the video now walks through time in chapters,
+    # so titles can promise exactly that. Listed first; the nostalgia set
+    # below stays as backup (competitor data: "take you back" 1.27x).
+    eras = metadata.get('eras') or []
+    female = not any(__import__('star_data').likely_male(n) for n in names[:3])
+    who = "Hollywood's Leading Ladies" if female else "Hollywood's Greatest Stars"
+    history_templates = [
+        f"Hollywood Glamour Through the Decades - Rare Photos {decade}",
+        f"A Walk Through Hollywood History in Rare Photos {decade}",
+        f"How Hollywood Glamour Changed, Decade by Decade {decade}",
+    ]
+    if any(e in eras for e in ('birth', 'silent')) and any(
+            e in eras for e in ('golden', 'war', 'postwar', 'widescreen', 'sixties')):
+        history_templates.insert(0, f"From Silent Films to Technicolor: {who} {decade}")
+    templates = history_templates + [
         f"Rare Photos That Take You Straight Back to Hollywood's Golden Age {decade}",
         f"One Look and You're Back: Rare Portraits of Old Hollywood's Leading Ladies {decade}",
         f"The Stars Your Parents Swooned Over - Rare Vintage Photos {decade}",
@@ -444,7 +523,10 @@ def build_fallback_title(metadata: Dict) -> str:
         # because the seeded rotation below would skip straight past them.
         import star_data as sd
         pos = {'m': 'His', 'f': 'Her'}.get(sd.star_gender(names[0]) or '', 'Their')
+        sy = _star_span(metadata, names[0])
         star_templates = [
+            f"{names[0]} Through the Years: Rare Photos {sy or decade}",
+            f"The Life and Times of {names[0]} in Rare Photos {sy or decade}",
             f"Remember {names[0]}? Rare Photos That Take You Right Back {decade}",
             f"{names[0]} at the Height of {pos} Fame - Rare Vintage Photos {decade}",
             f"The {names[0]} Photos Collectors Hunt For {decade}",
@@ -566,6 +648,30 @@ Whether you're a fan of Old Hollywood glamour, a lover of retro photography, or 
 #OldHollywood #VintageActresses #PinupGirls #ClassicCinema #RetroPhotography #ColorizedPhotos #HollywoodHistory #FilmIcons #MarilynMonroe #TimelessBeauty #VintageVibes #GoldenAgeOfHollywood #Actress #Actor #Pinups"""
 
 
+def _short_history_section(metadata: Dict, focus: str) -> str:
+    """The video's chapters in order, plus a paragraph or two of the history
+    they cover (history_data.ERAS). No timestamps: the owner asked for none."""
+    import history_data as hd
+    eras = [e for e in (hd.era_by_key(k) for k in (metadata.get('eras') or [])) if e]
+    if not eras:
+        return ''
+    rows = ["📜 A Short History in Pictures",
+            "This collection runs in chapters, oldest photos first:"]
+    n = 0
+    if focus:
+        n += 1
+        span = _star_span(metadata, focus)
+        rows.append(f"{n}. {focus} {span}".rstrip())
+    for e in eras:
+        n += 1
+        rng = f"{e['lo']}-{e['hi']}" if e['lo'] >= 1900 else f"before {e['hi'] + 1}"
+        rows.append(f"{n}. {e['title']} ({rng})")
+    picks = [eras[0]] + ([eras[len(eras) // 2]] if len(eras) >= 3 else [])
+    rows.append("")
+    rows += [e['desc'] for e in picks]
+    return "\n".join(rows)
+
+
 def build_description(metadata: Dict, title: str = "") -> str:
     """
     Description in the style of the reference channels (pulled live 2026-08):
@@ -673,6 +779,9 @@ def build_description(metadata: Dict, title: str = "") -> str:
         parts += [roll_line, ""]
     if quote_line:
         parts += [quote_line, ""]
+    history = _short_history_section(metadata, focus)
+    if history:
+        parts += [history, ""]
     parts += [
         sec_glamour, "",
         sec_rare, "",
@@ -774,6 +883,7 @@ def upload_video(
     thumbnail_path: Optional[str] = None,
     star: str = '',
     is_short: bool = False,
+    log_info: Optional[Dict] = None,
 ) -> Optional[str]:
     """
     Upload a video to YouTube.
@@ -864,6 +974,8 @@ def upload_video(
         # opening. Only recorded on a SUCCESSFUL upload, so a failed run never
         # burns a title.
         record_title(title)
+        record_title_history(video_id, title)
+        log_upload(video_id, title, schedule_time, is_short, star, log_info)
 
         # Upload thumbnail if provided
         if thumbnail_path and os.path.exists(thumbnail_path):
@@ -948,30 +1060,143 @@ def upload_from_metadata(metadata_path: str, privacy: str = None,
         privacy=privacy or config.DEFAULT_PRIVACY,
         schedule_time=schedule_time,
         thumbnail_path=thumbnail_path,
-        star=(metadata.get('focus_star') or '').strip()
+        star=(metadata.get('focus_star') or '').strip(),
+        log_info={'format': 'history' if metadata.get('eras') else 'slideshow',
+                  'eras': metadata.get('eras') or [],
+                  'images': metadata.get('image_count')},
     )
 
 
-def add_to_playlist(youtube, video_id: str, playlist_id: str) -> bool:
-    """Add a video to a playlist."""
-    try:
-        youtube.playlistItems().insert(
-            part='snippet',
-            body={
-                'snippet': {
-                    'playlistId': playlist_id,
-                    'resourceId': {
-                        'kind': 'youtube#video',
-                        'videoId': video_id
+def add_to_playlist(youtube, video_id: str, playlist_id: str, retries: int = 4) -> bool:
+    """Add a video to a playlist.
+
+    Retries with backoff: right after playlists.insert the new playlist isn't
+    visible to playlistItems yet and the add returns 409 SERVICE_UNAVAILABLE.
+    That one race left 11 of 15 star playlists public and EMPTY (2026-10)."""
+    for attempt in range(retries + 1):
+        try:
+            youtube.playlistItems().insert(
+                part='snippet',
+                body={
+                    'snippet': {
+                        'playlistId': playlist_id,
+                        'resourceId': {
+                            'kind': 'youtube#video',
+                            'videoId': video_id
+                        }
                     }
                 }
-            }
-        ).execute()
-        print(f"Added to playlist: {playlist_id}")
-        return True
-    except HttpError as e:
-        print(f"Error adding to playlist: {e}")
-        return False
+            ).execute()
+            print(f"Added to playlist: {playlist_id}")
+            return True
+        except HttpError as e:
+            status = getattr(getattr(e, 'resp', None), 'status', 0)
+            if status in (409, 500, 503) and attempt < retries:
+                wait = 4 * (2 ** attempt)
+                print(f"Playlist add returned {status}; retrying in {wait}s")
+                time.sleep(wait)
+                continue
+            print(f"Error adding to playlist: {e}")
+            return False
+    return False
+
+
+# ---------------------------------------------------------------------------
+# MEASUREMENT (2026-10): what was published, in which format, and how it did.
+# The token has no analytics scope, so public counts are the only signal; a
+# daily snapshot lets formats be compared at the same age (day 3, day 7).
+# ---------------------------------------------------------------------------
+UPLOAD_LOG = os.path.join(config.DATA_FOLDER, 'upload_log.jsonl')
+
+
+def log_upload(video_id: str, title: str, schedule_time, is_short: bool,
+               star: str = '', info: Optional[Dict] = None):
+    rec = {'id': video_id, 'uploaded': datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'),
+           'publish_at': schedule_time.strftime('%Y-%m-%dT%H:%MZ') if schedule_time else '',
+           'kind': 'short' if is_short else 'long', 'star': star or '', 'title': title}
+    rec.update(info or {})
+    try:
+        with open(UPLOAD_LOG, 'a', encoding='utf-8') as f:
+            f.write(json.dumps(rec, ensure_ascii=False) + '\n')
+    except Exception as e:
+        print(f"  Upload log not written: {e}")
+
+
+def snapshot_stats(youtube=None, n: int = 120) -> Optional[str]:
+    """Read-only: public view/like/comment counts of the last n uploads into
+    seed_data/stats/YYYY-MM-DD.json. About 6 quota units."""
+    try:
+        youtube = youtube or get_authenticated_service()
+        ch = youtube.channels().list(part='contentDetails', mine=True).execute()['items'][0]
+        pl = ch['contentDetails']['relatedPlaylists']['uploads']
+        ids, token = [], None
+        while len(ids) < n:
+            r = youtube.playlistItems().list(part='contentDetails', playlistId=pl,
+                                             maxResults=50, pageToken=token).execute()
+            ids += [i['contentDetails']['videoId'] for i in r['items']]
+            token = r.get('nextPageToken')
+            if not token:
+                break
+        rows = []
+        for i in range(0, min(len(ids), n), 50):
+            r = youtube.videos().list(part='statistics,snippet',
+                                      id=','.join(ids[i:i + 50])).execute()
+            for v in r['items']:
+                st = v.get('statistics', {})
+                rows.append([v['id'], v['snippet']['publishedAt'][:16],
+                             int(st.get('viewCount', 0)), int(st.get('likeCount', 0)),
+                             int(st.get('commentCount', 0))])
+        d = os.path.join(config.DATA_FOLDER, 'stats')
+        os.makedirs(d, exist_ok=True)
+        path = os.path.join(d, datetime.utcnow().strftime('%Y-%m-%d') + '.json')
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write('[\n' + ',\n'.join(json.dumps(x) for x in rows) + '\n]\n')
+        print(f"Stats snapshot: {len(rows)} videos -> {os.path.basename(path)}")
+        return path
+    except Exception as e:
+        print(f"Stats snapshot skipped: {type(e).__name__}: {e}")
+        return None
+
+
+def backfill_star_playlists(youtube=None, budget: int = 4) -> int:
+    """Fill EMPTY star playlists with the channel's past videos of that star
+    (matched by name in the title, from title_history.json). Capped per run:
+    each add costs 50 quota units and the daily uploads need most of the
+    10,000. Returns the number of videos added."""
+    if budget <= 0:
+        return 0
+    cache = _load_playlist_cache()
+    stars = {t[:-len(' - Rare Vintage Photos')]: pid for t, pid in cache.items()
+             if t.endswith(' - Rare Vintage Photos')}
+    if not stars:
+        return 0
+    try:
+        youtube = youtube or get_authenticated_service()
+        counts = {}
+        pids = list(stars.values())
+        for i in range(0, len(pids), 50):
+            r = youtube.playlists().list(part='contentDetails', id=','.join(pids[i:i + 50]),
+                                         maxResults=50).execute()
+            counts.update({p['id']: p['contentDetails']['itemCount'] for p in r['items']})
+    except Exception as e:
+        print(f"Playlist backfill skipped: {e}")
+        return 0
+    added = 0
+    hist = load_title_history()
+    for star, pid in stars.items():
+        if added >= budget:
+            break
+        if counts.get(pid, 1) > 0:
+            continue
+        vids = [vid for vid, t in hist if star.lower() in (t or '').lower()][:2]
+        for vid in vids:
+            if added >= budget:
+                break
+            if add_to_playlist(youtube, vid, pid, retries=1):
+                added += 1
+    if added:
+        print(f"Playlist backfill: added {added} past videos to empty star playlists")
+    return added
 
 
 # ---------------------------------------------------------------------------
@@ -1289,6 +1514,8 @@ def _classic_short_titles(metadata: Dict, seed: int) -> List[str]:
     genders = [sd.star_gender(n) for n in names]
     known = [g for g in genders if g]
     female = not known or sum(g == 'f' for g in known) >= 0.75 * len(known)
+    if any(sd.likely_male(n) for n in names):
+        female = False        # never "Actresses" over a man's photo
     groups = _CLASSIC_GROUPS_F if female else _CLASSIC_GROUPS_MIX
     noun = "Actress" if female else "Hollywood"
     plural = "Actresses" if female else "Hollywood Stars"
@@ -1308,6 +1535,64 @@ def _classic_short_titles(metadata: Dict, seed: int) -> List[str]:
     return [cands[(seed * 7 + i) % len(cands)] for i in range(len(cands))]
 
 
+def _decades(years) -> tuple:
+    ys = [y for y in (years or []) if y]
+    return ((min(ys) // 10) * 10, (max(ys) // 10) * 10) if ys else (None, None)
+
+
+def _all_female(metadata: Dict) -> bool:
+    """True only when every identified name is a woman (a man in a reel
+    titled "Actresses" is the 2026-10 Ronald Colman bug)."""
+    import star_data as sd
+    names = metadata.get('names') or []
+    return bool(names) and not any(sd.likely_male(n) for n in names) and \
+        sum(sd.star_gender(n) == 'f' for n in names) >= max(1, len(names) // 2)
+
+
+def _history_short_titles(metadata: Dict, seed: int) -> List[str]:
+    """Titles for the history-lens shorts (2026-10): each says what the short
+    actually is -- a star through the years, a chapter of Hollywood history,
+    or a decade-by-decade walk -- in the short Title Case the 2025 hits used."""
+    import star_data as sd
+    import history_data as hd
+    kind = metadata.get('short_kind')
+    star = (metadata.get('focus_star') or '').strip()
+    years = metadata.get('years') or []
+    y0, y1 = (years + [None, None])[:2]
+    d0, d1 = _decades(years)
+    span = f"{d0}s to {d1}s" if d0 and d1 and d1 > d0 else (f"the {d0}s" if d0 else '')
+    rot = lambda xs: [xs[(seed + i) % len(xs)] for i in range(len(xs))] if xs else []
+    if kind == 'star' and star:
+        cands = []
+        for f in sd.facts_for(star):
+            if re.search(r"(?<=\s)'[^']+'", f) and 'hairstyle' not in f and len(star) + len(f) <= 50:
+                cands.append(f"{star}: " + re.sub(r"(?<=\s)'([^']+)'", lambda m: m.group(1), f))
+        yrs = f" ({y0} to {y1})" if y0 and y1 and y1 - y0 >= 3 else ''
+        cands += rot([f"{star} Through the Years{yrs}", f"The Life of {star} in Pictures",
+                      f"Rare Photos of {star} Through the Years",
+                      f"{star}: A Hollywood Life in Photos"])
+        return cands
+    if kind == 'theme':
+        t = hd.theme_by_key(metadata.get('theme_key') or '')
+        return rot(list(t['titles'])) if t else []
+    female = _all_female(metadata)
+    who = "Hollywood's Leading Ladies" if female else "Hollywood's Greatest Stars"
+    eras = metadata.get('eras') or []
+    cands = []
+    if span:
+        cands += [f"Hollywood Glamour Through the Decades ({d0}s to {d1}s)" if d1 > d0
+                  else f"Hollywood Glamour in the {d0}s",
+                  f"{who}, Decade by Decade" if d1 > d0 else f"{who} of the {d0}s",
+                  f"How Hollywood Glamour Changed, {span}" if d1 > d0 else '',
+                  f"A Walk Through Hollywood History, {span}" if d1 > d0 else '',
+                  f"Old Hollywood, {y0} to {y1}" if y0 and y1 and y1 > y0 else '']
+    if any(e in eras for e in ('birth', 'silent')) and any(
+            e in eras for e in ('golden', 'war', 'postwar', 'widescreen', 'sixties')):
+        cands.append(f"From Silent Films to Technicolor: {who}")
+    cands += ["Hollywood History in Rare Photos", "Old Hollywood, Decade by Decade"]
+    return rot([c for c in cands if c])
+
+
 def build_short_title(metadata: Dict) -> str:
     """Punchy vertical-format title. <= ~70 chars including the tag.
 
@@ -1320,7 +1605,12 @@ def build_short_title(metadata: Dict) -> str:
     seed = _video_seed(metadata)
     tail = " #Shorts" if getattr(config, 'SHORT_TITLE_HASHTAG', False) else ""
 
-    if getattr(config, 'SHORT_TITLE_STYLE', 'classic') == 'classic':
+    style = getattr(config, 'SHORT_TITLE_STYLE', 'classic')
+    if style == 'history' and metadata.get('short_kind'):
+        cands = _history_short_titles(metadata, seed) + _classic_short_titles(metadata, seed)
+        cand = next((c for c in cands if not is_title_too_similar(c)), cands[0])
+        return f"{cand}{tail}"[:99]
+    if style in ('classic', 'history'):
         cands = _classic_short_titles(metadata, seed)
         cand = next((c for c in cands if not is_title_too_similar(c)), cands[0])
         return f"{cand}{tail}"[:99]
@@ -1373,6 +1663,8 @@ def build_short_description(metadata: Dict) -> str:
     seed = _video_seed(metadata)
     q = metadata.get('quote') or []
     listed = ", ".join(names[:6])
+    if metadata.get('short_kind') and getattr(config, 'SHORT_CAPTION_STYLE', '') == 'history':
+        return _history_short_description(metadata, seed) + "\n\n" + CHANNEL_EVERGREEN
     hooks = [
         "This is what real Hollywood glamour looked like... Notice the sophisticated "
         "styling and timeless beauty of Golden Age cinema. Who remembers this era?",
@@ -1395,6 +1687,42 @@ def build_short_description(metadata: Dict) -> str:
         hooks.append(f"\u201c{q[0]}\u201d {q[2]} and more Golden Age stars in rare "
                      f"photographs. Notice the timeless glamour of a bygone era. Who remembers this era?")
     return hooks[seed % len(hooks)] + "\n\n" + CHANNEL_EVERGREEN
+
+
+def _history_short_description(metadata: Dict, seed: int) -> str:
+    """The owner's format -- ONE hook paragraph above the welcome block -- with
+    the history the short actually shows: who, which years, and the
+    "did you know" lines that appeared on screen."""
+    import star_data as sd
+    import history_data as hd
+    kind = metadata.get('short_kind')
+    star = (metadata.get('focus_star') or '').strip()
+    names = metadata.get('names') or []
+    years = metadata.get('years') or []
+    y0, y1 = (years + [None, None])[:2]
+    lines = metadata.get('history_lines') or []
+    know = ''
+    if lines:
+        y, ev = lines[0]
+        know = f" Did you know? In {y}, {ev}."
+    if kind == 'star' and star:
+        facts = sd.facts_for(star)
+        lead = f"{star}: {facts[0].rstrip('.')}." if facts else f"{star}, a true Golden Age legend."
+        span = f" Rare photos from {y0} to {y1}." if y0 and y1 and y1 > y0 else " Rare photos from Hollywood's golden age."
+        return f"{lead}{span}{know} Who remembers {star}?"
+    if kind == 'theme':
+        t = hd.theme_by_key(metadata.get('theme_key') or '')
+        who = f" Featuring {', '.join(names[:5])}." if len(names) >= 2 else ''
+        q = (t['prompt'][0] if t else "Who remembers this era?")
+        return f"{t['desc'] if t else ''}{who}{know} {q}".strip()
+    span = (f"Hollywood glamour from {y0} to {y1}, one photo at a time"
+            if y0 and y1 and y1 > y0 else "Hollywood glamour, decade by decade")
+    who = f": {', '.join(names[:5])} and more" if len(names) >= 2 else ''
+    eras = [e for e in (hd.era_by_key(k) for k in (metadata.get('eras') or [])) if e]
+    via = ''
+    if len(eras) >= 2:
+        via = f" From {eras[0]['name']} to {eras[-1]['name']}."
+    return f"{span}{who}.{via}{know} Which decade was your favorite?"
 
 
 def generate_short_tags(metadata: Dict) -> List[str]:

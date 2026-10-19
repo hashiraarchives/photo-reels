@@ -61,13 +61,25 @@ def compose_vertical_frame(src_path: str, out_path: str) -> bool:
             if getattr(config, 'SHORT_LAYOUT', 'fit') == 'fit':
                 # The channel's best shorts (2025) showed the WHOLE photo,
                 # centred on black: nothing cropped off, a formal montage.
-                scale = min(W / ow, (H * 0.80) / oh)
+                # 2026-10: a little lower and smaller, leaving a bar above for
+                # the year ticker, inside a thin gold keyline like a mounted
+                # vintage print.
+                keyline = getattr(config, 'SHORT_KEYLINE', False)
+                max_h = float(getattr(config, 'SHORT_PHOTO_MAX_H', 0.80))
+                max_w = W - (64 if keyline else 0)
+                scale = min(max_w / ow, (H * max_h) / oh)
                 photo = _grade(img.resize((max(1, int(ow * scale)), max(1, int(oh * scale))),
                                           Image.LANCZOS))
                 canvas = Image.new('RGB', (W, H), (0, 0, 0))
-                top = int(H * 0.46 - photo.height / 2)
-                top = max(int(H * 0.06), min(top, H - photo.height))
-                canvas.paste(photo, ((W - photo.width) // 2, top))
+                top = int(H * 0.47 - photo.height / 2)
+                top = max(int(H * 0.09), min(top, H - photo.height))
+                left = (W - photo.width) // 2
+                canvas.paste(photo, (left, top))
+                if keyline:
+                    from PIL import ImageDraw
+                    d, g = ImageDraw.Draw(canvas), 12
+                    d.rectangle([left - g, top - g, left + photo.width + g - 1,
+                                 top + photo.height + g - 1], outline=(196, 164, 104), width=3)
                 img = canvas
             else:
                 img = _cover_crop(img, W, H, bias)
@@ -126,7 +138,7 @@ def _balanced(text: str, max_chars: int):
     return best or _wrap(text, max_chars)
 
 
-def _fit(text: str, max_size: int, min_size: int, max_lines: int):
+def _fit(text: str, max_size: int, min_size: int, max_lines: int, width: int = 960):
     """Largest font size (<= max_size) at which `text` wraps into max_lines
     lines of ~960px. Sans glyphs average ~0.55em (DejaVu, the CI font, runs
     wider than Arial, so don't tighten this from a Windows preview)."""
@@ -135,7 +147,7 @@ def _fit(text: str, max_size: int, min_size: int, max_lines: int):
     chunks = [c for c in re.split(r'(?<=[.!?,;])\s+', text) if c]
     if len(chunks) > 1:
         for size in range(max_size, max(min_size, max_size - 12) - 1, -4):
-            cap = max(8, int(960 / (0.55 * size)))
+            cap = max(8, int(width / (0.55 * size)))
             if max(map(len, chunks)) > cap:
                 continue
             lines, cur = [], ''
@@ -149,10 +161,10 @@ def _fit(text: str, max_size: int, min_size: int, max_lines: int):
             if len(lines) <= max_lines:
                 return size, lines
     for size in range(max_size, min_size - 1, -4):
-        cap = max(8, int(960 / (0.55 * size)))
+        cap = max(8, int(width / (0.55 * size)))
         if len(_wrap(text, cap)) <= max_lines:
             return size, _balanced(text, cap)
-    return min_size, _balanced(text, max(8, int(960 / (0.55 * min_size))))
+    return min_size, _balanced(text, max(8, int(width / (0.55 * min_size))))
 
 
 def _textfile(dirpath: str, text: str) -> str:
@@ -165,12 +177,13 @@ def _textfile(dirpath: str, text: str) -> str:
 def _block_filter(block: dict, dirpath: str) -> str:
     """drawtext chain for a centred block: main lines (white on a dark plate)
     plus an optional gold subline, vertically centred in the safe band."""
-    font = config.CAPTION_FONT_FILE.replace('\\', '/').replace(':', '\\:')
+    font = (block.get('font') or config.CAPTION_FONT_FILE).replace('\\', '/').replace(':', '\\:')
     H = config.SHORT_HEIGHT
+    width = block.get('width', 960)
     size, lines = _fit(block['text'], block.get('size', 84), block.get('min_size', 56),
-                       block.get('max_lines', 4))
+                       block.get('max_lines', 4), width)
     sub = block.get('sub', '')
-    ssize, slines = _fit(sub, 56, 44, 2) if sub else (0, [])
+    ssize, slines = _fit(sub, 56, 44, 2, width) if sub else (0, [])
     lh, slh = int(size * 1.28), int(ssize * 1.3)
     total = lh * len(lines) + (24 + slh * len(slines) if slines else 0)
     top_f, bot_f = block.get('band', (_BAND_TOP, _BAND_BOTTOM))
@@ -179,10 +192,12 @@ def _block_filter(block: dict, dirpath: str) -> str:
     plate = (":box=1:boxcolor=black@0.5:boxborderw=18" if block.get('plate', True)
              else ":shadowcolor=black@0.85:shadowx=3:shadowy=3")
     out = ''
+    # serif strokes are finer than sans: a sans-weight outline smears them
+    bw = max(3, size // 14) if block.get('font') else max(5, size // 10)
     for i, ln in enumerate(lines):
         out += (f",drawtext=fontfile='{font}':textfile='{_textfile(dirpath, ln)}'"
                 f":expansion=none:fontcolor=white:fontsize={size}"
-                f":borderw={max(5, size // 10)}:bordercolor=black@0.95"
+                f":borderw={bw}:bordercolor=black@0.95"
                 f"{plate}"
                 f":x=(w-text_w)/2:y={y0 + i * lh}")
     for j, ln in enumerate(slines):
@@ -196,15 +211,18 @@ def _block_filter(block: dict, dirpath: str) -> str:
 
 def _render_clip(frame_path: str, out_path: str, duration: float,
                  label: str, zoom_in: bool, prompt: tuple = (),
-                 block: dict = None) -> bool:
+                 block: dict = None, ticker: tuple = ()) -> bool:
     """One Ken Burns clip with the star label burned in. `prompt` (headline,
-    subline) adds the end-card comment question in the top third."""
+    subline) adds the end-card comment question in the top third. `ticker`
+    (year, era label) is the gold timeline marker in the bar above the photo."""
     W, H, FPS = config.SHORT_WIDTH, config.SHORT_HEIGHT, config.FPS
     frames = max(1, int(duration * FPS))
     # Upscale 2x before zoompan: zoompan is famously jittery when it steps
     # across a small source, and the extra pixels keep the motion smooth.
     if getattr(config, 'SHORT_KENBURNS', True):
         zmax = 1.06 if getattr(config, 'SHORT_LAYOUT', 'fit') == 'fit' else 1.15
+        if getattr(config, 'SHORT_TICKER', False) and getattr(config, 'SHORT_LAYOUT', 'fit') == 'fit':
+            zmax = 1.04     # a deeper zoom pushes the photo's top edge into the ticker
         step = (zmax - 1.0) / max(frames, 1)
         if zoom_in:
             z = f"min(zoom+{step:.6f},{zmax})"
@@ -217,6 +235,21 @@ def _render_clip(frame_path: str, out_path: str, duration: float,
         motion = f"scale={W}:{H},fps={FPS}"
 
     vf = motion
+    if getattr(config, 'SHORT_FILM_GRAIN', False):
+        vf += ",noise=alls=6:allf=t"      # faint moving grain: an old print, not a JPEG
+    if ticker:
+        # Timeline marker: the year in gold serif, the era beneath in small
+        # caps -- the viewer always knows where in history the photo sits.
+        sfont = getattr(config, 'SERIF_FONT_FILE', config.CAPTION_FONT_FILE)
+        sfont = sfont.replace('\\', '/').replace(':', '\\:')
+        year, tag = (list(ticker) + [''])[:2]
+        vf += (f",drawtext=fontfile='{sfont}':textfile='{_textfile(os.path.dirname(out_path), str(year))}'"
+               f":expansion=none:fontcolor=0xE2C27A:fontsize=76:borderw=4:bordercolor=black@0.9"
+               f":x=(w-text_w)/2:y=16")
+        if tag:
+            vf += (f",drawtext=fontfile='{sfont}':textfile='{_textfile(os.path.dirname(out_path), tag)}'"
+                   f":expansion=none:fontcolor=white@0.92:fontsize=28:borderw=3:bordercolor=black@0.9"
+                   f":x=(w-text_w)/2:y=98")
     if label:
         font = config.CAPTION_FONT_FILE.replace('\\', '/').replace(':', '\\:')
         # Lower third, large, white on a soft dark plate — legible at a glance
@@ -243,15 +276,32 @@ def _render_clip(frame_path: str, out_path: str, duration: float,
         # the head-safe crop keeps faces in the top third, which text must not cover.
         font = config.CAPTION_FONT_FILE.replace('\\', '/').replace(':', '\\:')
         head, sub = (list(prompt) + [''])[:2]
+        tdir = os.path.dirname(out_path)
+        if getattr(config, 'SHORT_TICKER', False) and getattr(config, 'SHORT_LAYOUT', 'fit') == 'fit':
+            # History layout: the question takes the ticker's place in the bar
+            # above the photo, in the same serif (the photo starts lower now,
+            # so the old two-line prompt ran into it).
+            sfont = getattr(config, 'SERIF_FONT_FILE', config.CAPTION_FONT_FILE)
+            sfont = sfont.replace('\\', '/').replace(':', '\\:')
+            hs = max(46, min(64, int(980 / (0.55 * max(len(head), 1)))))
+            vf += (f",drawtext=fontfile='{sfont}':textfile='{_textfile(tdir, head)}':expansion=none"
+                   f":fontcolor=white:fontsize={hs}:borderw=4:bordercolor=black@0.9"
+                   f":x=(w-text_w)/2:y=22")
+            if sub:
+                vf += (f",drawtext=fontfile='{sfont}':textfile='{_textfile(tdir, sub)}':expansion=none"
+                       f":fontcolor=0xE2C27A:fontsize=34:borderw=3:bordercolor=black@0.9"
+                       f":x=(w-text_w)/2:y={22 + hs + 14}")
+            prompt = ()
+    if prompt:
         # Bold sans runs ~0.6em per glyph: size to fit ~960px of the 1080 frame.
         hsize = max(56, min(84, int(960 / (0.6 * max(len(head), 1)))))
         ssize = max(44, min(62, int(960 / (0.6 * max(len(sub), 1)))))
-        vf += (f",drawtext=fontfile='{font}':text='{_esc(head)}'"
+        vf += (f",drawtext=fontfile='{font}':textfile='{_textfile(tdir, head)}':expansion=none"
                f":fontcolor=white:fontsize={hsize}:borderw=8:bordercolor=black@0.95"
                f":box=1:boxcolor=black@0.55:boxborderw=24"
                f":x=(w-text_w)/2:y=h*{_PROMPT_Y}")
         if sub:
-            vf += (f",drawtext=fontfile='{font}':text='{_esc(sub)}'"
+            vf += (f",drawtext=fontfile='{font}':textfile='{_textfile(tdir, sub)}':expansion=none"
                    f":fontcolor=0xFFD66B:fontsize={ssize}:borderw=7:bordercolor=black@0.95"
                    f":x=(w-text_w)/2:y=h*{_PROMPT_Y}+{hsize + 58}")
 
@@ -302,12 +352,15 @@ def _build_audio(total_duration: float, temp_dir: str) -> Optional[str]:
         offset = random.uniform(min(lo, headroom), min(hi, headroom))
         loop_args = []
     out = os.path.join(temp_dir, 'audio.m4a')
-    fade_out_at = max(0.1, total_duration - 1.6)
+    # A short loops: a long fade-out tells the viewer it is over right as the
+    # replay starts. Only a de-click fade at the very end (2026-10 audit).
+    fade = 0.3
+    fade_out_at = max(0.1, total_duration - fade)
     cmd = [config.FFMPEG_PATH, '-y'] + loop_args + ['-ss', f'{offset:.2f}', '-i', track,
            '-t', f'{total_duration:.2f}',
            '-af', (f"volume={config.MUSIC_VOLUME},"
                    f"afade=t=in:st=0:d=0.35,"
-                   f"afade=t=out:st={fade_out_at:.2f}:d=1.6"),
+                   f"afade=t=out:st={fade_out_at:.2f}:d={fade}"),
            # -vn is essential: these mp3s carry embedded cover art, which ffmpeg
            # sees as a video stream and the m4a muxer then refuses to write
            # ("could not write header"), silently shipping a SILENT short.
@@ -347,6 +400,8 @@ def generate_short(theme: Optional[str] = None) -> Optional[str]:
     # at target_count successes, so spare rows cost nothing on a healthy pool
     # but keep a short from starving when many rows are rejected.
     cand = max(over, float(getattr(config, 'SHORT_CANDIDATE_MULT', 3.0)))
+    if getattr(config, 'SHORT_CAPTION_STYLE', 'montage') == 'history':
+        cand = max(cand, 3.5)
     star_min = int(getattr(config, 'SHORT_STAR_MIN_ROWS', 11))
     # Shorts recycle faster than long-form: their audience is mostly the
     # scrolling feed, not subscribers, so a photo returning after two weeks is
@@ -357,13 +412,35 @@ def generate_short(theme: Optional[str] = None) -> Optional[str]:
     # reel of many actresses is fine, and every clip gets its own fitting
     # wording (name, era line, quote). Star shorts still happen, just
     # occasionally, for variety.
-    want_star = random.random() < float(getattr(config, 'SHORT_STAR_RATE', 0.3))
+    # HISTORY LENS (owner, 2026-10): every short walks forward through time.
+    # Three kinds: a star "through the years", a themed story (WWII, the
+    # talkies, the Oscar winners...) or a decade-by-decade timeline.
+    history = getattr(config, 'SHORT_CAPTION_STYLE', 'montage') == 'history'
+    if history:
+        keep = int(getattr(config, 'SHORT_HISTORY_CLIPS', 12))
+        # older scans fail the print-matter veto more often (a silent-era
+        # theme lost 11 of 22 frames in testing): line up and fetch more
+        over = max(over, 2.4)
+    roll = random.random()
+    star_rate = float(getattr(config, 'SHORT_STAR_RATE', 0.3))
+    want_star = roll < star_rate
+    story = None
+    if history and not want_star and roll < star_rate + float(getattr(config, 'SHORT_THEME_RATE', 0.0)):
+        story = _pick_short_theme(reuse, need=int(keep * 2.5))
     sel = dict(star_share=1.0, star_min_rows=star_min, reuse_days=reuse,
                for_shorts=True, star_episode=want_star)
+    if story:
+        sel['row_filter'] = _theme_row_filter(story)
+        print(f"  THEMED SHORT: {story['key']}")
     rows = select_unused_images(int(keep * cand), pool_paths=pools, **sel)
     if len(rows) < keep and curated_only:
         print(f"  curated pool only yielded {len(rows)}; widening to all pools")
         rows = select_unused_images(int(keep * cand), **sel)
+    if story and len(rows) < keep:
+        print(f"  theme '{story['key']}' too thin ({len(rows)} rows); running as a timeline")
+        story = None
+        sel.pop('row_filter', None)
+        rows = select_unused_images(int(keep * cand), pool_paths=pools, **sel)
     if len(rows) < 3:
         print("Error: not enough photos available")
         return None
@@ -379,6 +456,7 @@ def generate_short(theme: Optional[str] = None) -> Optional[str]:
     try:
         clips = asyncio.run(download_with_browser(rows, temp_dir,
                                                  target_count=int(keep * over)))
+        spare = []          # clean frames ranked below the cut (timeline picks from them)
         min_clips = int(getattr(config, 'SHORT_MIN_CLIPS', 10))
         if len(clips) < min_clips:
             # A 20-second short with a generic title is worse than no short:
@@ -431,7 +509,7 @@ def generate_short(theme: Optional[str] = None) -> Optional[str]:
                         ranked = star_c
                         print(f"  star-only short: {len(star_c)} {focus_star} frames")
                 if len(ranked) >= max(3, keep // 2):
-                    clips = ranked[:keep]
+                    clips, spare = ranked[:keep], ranked[keep:]
                     print(f"  heuristic ranking: kept {len(clips)} of {len(ranked)} clean frames")
                 else:
                     clips = clips[:keep]
@@ -439,16 +517,17 @@ def generate_short(theme: Optional[str] = None) -> Optional[str]:
                 print(f"  heuristic ranking unavailable ({e})")
                 clips = clips[:keep]
 
-        # Lead with the strongest image — the first second decides the swipe.
-        # With vision scouting off (the default, for cost) 'portrait' is the
-        # free proxy: a tall source is almost always a person rather than a
-        # scene still, and it fills a 9:16 frame without heavy cropping.
-        clips.sort(key=lambda c: (c.get('vision_score', 5.0),
-                                  c.get('heur_score', 0.0),
-                                  1 if c.get('portrait') else 0), reverse=True)
-        lead, rest = clips[0], clips[1:]
-        random.shuffle(rest)
-        clips = [lead] + rest
+        if not history:
+            # Lead with the strongest image — the first second decides the swipe.
+            # With vision scouting off (the default, for cost) 'portrait' is the
+            # free proxy: a tall source is almost always a person rather than a
+            # scene still, and it fills a 9:16 frame without heavy cropping.
+            clips.sort(key=lambda c: (c.get('vision_score', 5.0),
+                                      c.get('heur_score', 0.0),
+                                      1 if c.get('portrait') else 0), reverse=True)
+            lead, rest = clips[0], clips[1:]
+            random.shuffle(rest)
+            clips = [lead] + rest
 
         # A short burns ONE name on screen, so verify the frames really are
         # that person before labelling. A test short labelled a child Elizabeth
@@ -473,8 +552,22 @@ def generate_short(theme: Optional[str] = None) -> Optional[str]:
             else:
                 print(f"  star purity {purity:.0%} — labelling as {focus_star}")
 
+        kind = 'star' if focus_star else ('theme' if story else 'timeline')
+        if history:
+            pool_all = clips + spare
+            clips = _arrange_history(pool_all, kind, focus_star, story, keep)
+            if len(clips) < min_clips and kind != 'timeline':
+                # a theme or star that thinned out after download still makes
+                # an honest timeline short from the same photos
+                print(f"  {kind} short thinned to {len(clips)} photos; arranging as a timeline")
+                kind, story, focus_star = 'timeline', None, ''
+                clips = _arrange_history(pool_all, kind, '', None, keep)
+            if len(clips) < min_clips:
+                print(f"Error: only {len(clips)} usable photos after arranging (need {min_clips})")
+                return None
+
         # 5) Render
-        print(f"\n[5/6] Rendering {len(clips)} clips...")
+        print(f"\n[5/6] Rendering {len(clips)} clips ({kind})...")
         hook_n = int(getattr(config, 'SHORT_HOOK_CLIPS', 3))
         hook_d = float(getattr(config, 'SHORT_HOOK_DURATION', 3.0))
         base_d = float(getattr(config, 'SHORT_IMAGE_DURATION', 5.0))
@@ -485,10 +578,22 @@ def generate_short(theme: Optional[str] = None) -> Optional[str]:
         # Every clip gets wording that FITS it: who is on screen (and when),
         # an era-matched one-liner or a real quote from that person, a humor
         # hook up front and the comment question at the end.
-        plan = _plan_wording(clips, focus_star, hook_n, last_i)
+        if history:
+            hook_n, hook_d = 1, float(getattr(config, 'SHORT_HISTORY_HOOK_DURATION', 4.0))
+            base_d = float(getattr(config, 'SHORT_HISTORY_IMAGE_DURATION', 4.4))
+            if len(clips) > 1:
+                # fewer photos than planned: hold each a little longer so the
+                # short still runs ~50s (capped: past ~5.4s a still drags)
+                base_d = max(base_d, min(5.4, (52.0 - hook_d) / (len(clips) - 1)))
+            plan = _plan_history(clips, kind, focus_star, story, last_i)
+            end_prompt = plan.get('end_prompt') or end_prompt
+        else:
+            plan = _plan_wording(clips, focus_star, hook_n, last_i)
         plates, blocks, extra = plan['plates'], plan['blocks'], plan['extra_secs']
+        tickers = plan.get('tickers', {})
         print(f"  hook: {plan['hook']!r} | quote: {plan['quote'][0] if plan['quote'] else None!r}"
-              f" | captioned: {len(plan.get('captions') or blocks)}/{len(clips)}")
+              f" | captioned: {len(plan.get('captions') or blocks)}/{len(clips)}"
+              f" | history lines: {len(plan.get('history_lines') or [])}")
 
         clip_paths, durations = [], []
         for i, c in enumerate(clips):
@@ -502,7 +607,7 @@ def generate_short(theme: Optional[str] = None) -> Optional[str]:
             out = os.path.join(temp_dir, f"clip_{i:02d}.mp4")
             if _render_clip(frame, out, d, plates.get(i, ''), zoom_in=(i % 2 == 0),
                             prompt=end_prompt if i == last_i else (),
-                            block=blocks.get(i)):
+                            block=blocks.get(i), ticker=tickers.get(i, ())):
                 clip_paths.append(out)
                 durations.append(d)
         if not clip_paths:
@@ -569,6 +674,11 @@ def generate_short(theme: Optional[str] = None) -> Optional[str]:
                 'theme': theme,
                 'is_short': True,
                 'focus_star': focus_star,
+                'short_kind': kind,
+                'theme_key': story['key'] if story else '',
+                'years': plan.get('years') or [],
+                'eras': plan.get('eras') or [],
+                'history_lines': plan.get('history_lines') or [],
                 'hook': plan['hook'],
                 'quote': list(plan['quote']) if plan['quote'] else None,
                 'names': plan['names'],
@@ -752,3 +862,354 @@ def _plan_wording(clips, focus_star: str, hook_n: int, last_i: int) -> dict:
     names = list(dict.fromkeys(n for n in who.values() if n))
     return {'plates': plates, 'blocks': blocks, 'extra_secs': extra,
             'hook': hook, 'quote': quote, 'names': names, 'wit': wit_used}
+
+
+# =============================================================================
+# HISTORY LENS (owner, 2026-10)
+# =============================================================================
+# A short is a small trip through time: a cold open on the strongest face with
+# the short's promise, then the photos in chronological order under a gold year
+# ticker, with a few "That year, ..." lines placing them in history. Facts come
+# from history_data.py (well-documented events only) and star_data.py.
+_YEAR_TXT = re.compile(r'\b(18[89]\d|19[0-8]\d)\b')
+_JOINER = re.compile(r'\b(and|with)\b|&', re.I)
+
+
+def _year_in(text: str) -> Optional[int]:
+    m = _YEAR_TXT.search(text or '')
+    return int(m.group(1)) if m else None
+
+
+def _load_ledger() -> dict:
+    try:
+        with open(_PACK_LEDGER, encoding='utf-8') as f:
+            return json.load(f) or {}
+    except Exception:
+        return {}
+
+
+def _save_ledger(led: dict):
+    try:
+        with open(_PACK_LEDGER, 'w', encoding='utf-8') as f:
+            json.dump(led, f, indent=1, ensure_ascii=False)
+    except Exception as e:
+        print(f"  packaging ledger not saved: {e}")
+
+
+def _theme_row_filter(story: dict):
+    """Row-level test for a themed short, from the filename/category alone
+    (selection happens before anything is scraped or downloaded)."""
+    import star_data as sd
+    import history_data as hd
+
+    def ok(r):
+        fn, cat = r.get('image_filename') or '', r.get('source_category') or ''
+        name = sd.identify(fn, cat)
+        y = _year_in(fn + ' ' + cat)
+        if name and y and not sd.plausible_year(name, y):
+            y = None
+        return hd.theme_admits(story, name, y)
+    return ok
+
+
+def _pick_short_theme(reuse: int, need: int) -> Optional[dict]:
+    """A theme the curated pool can actually fill today, not one of the last
+    few used. None when no theme has `need` rows free (the short then runs
+    as a timeline)."""
+    import history_data as hd
+    from create_slideshow import _read_image_csv, _short_available, _passes_quality
+    rows, _ = _read_image_csv(config.GOLDMINE3_CSV)
+    rows = [r for r in rows if _short_available(r, reuse) and _passes_quality(r)]
+    avail = {t['key']: sum(1 for r in rows if _theme_row_filter(t)(r)) for t in hd.THEMES}
+    led = _load_ledger()
+    story = hd.pick_theme(avail, need, led.get('themes', []))
+    print(f"  theme supply (need {need}): {avail} -> {story['key'] if story else 'none'}")
+    if story:
+        led['themes'] = (led.get('themes', []) + [story['key']])[-30:]
+        _save_ledger(led)
+    return story
+
+
+def _is_solo(c: dict) -> bool:
+    """One person in frame, as far as the metadata can tell."""
+    import star_data as sd
+    fn, cap = c.get('filename') or '', c.get('caption') or ''
+    if _JOINER.search(re.sub(r'\.(jpe?g|png|tiff?|webp)$', '', fn, flags=re.I)):
+        return False
+    if _JOINER.search(cap.split(' in "')[0]):
+        return False
+    return sd.identify(fn, c.get('category'), cap) is not None or not re.search(
+        r'\b(cast|group|crowd|party|scene)\b', (fn + ' ' + cap).lower())
+
+
+def _arrange_history(pool: List[dict], kind: str, focus_star: str,
+                     story: Optional[dict], keep: int) -> List[dict]:
+    """Order a short as a walk through time.
+
+    clip 0      the strongest solo leading lady -- the cold open under the
+                short's promise (also what a viewer sees first in the feed)
+    clips 1..   chronological; a timeline short spreads them across eras
+    clip 6      lands on the video's 50% mark, which YouTube uses as the
+                Shorts thumbnail: it must be a named, solo, adult leading lady
+                too (the 2026-10 audit found Ronald Colman as the thumbnail of
+                "Most Beautiful Actresses in Rare Moments")
+    """
+    import star_data as sd
+    import history_data as hd
+    seen, cands = set(), []
+    for c in pool:
+        key = c.get('orig') or c.get('path')
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        blob = ' '.join(str(c.get(k) or '') for k in ('filename', 'caption', 'category'))
+        if kind == 'star':
+            sl = focus_star.lower()
+            if sl not in blob.lower() and sl.split()[-1] not in blob.lower():
+                continue
+            name = focus_star
+        else:
+            name = sd.identify(c.get('filename'), c.get('category'), c.get('caption'))
+        raw = _year_in(str(c.get('date') or '')) or _year_in(blob)
+        if sd.is_child_photo(blob + ' ' + str(c.get('date') or ''), name, raw):
+            print(f"    skip (childhood photo): {(c.get('filename') or '')[:50]}")
+            continue
+        year = hd.photo_year(c, name)
+        if story and not hd.theme_admits(story, name, year):
+            continue
+        c['_name'], c['_year'] = name, year
+        c['_ay'] = year or hd.approx_year(c, name)
+        c['_solo'] = _is_solo(c)
+        cands.append(c)
+    if not cands:
+        return []
+    star_male = kind == 'star' and sd.star_gender(focus_star) == 'm'
+
+    def worthy(c):
+        if not c['_solo']:
+            return False
+        if star_male:
+            return True
+        return bool(c['_name']) and sd.star_gender(c['_name']) == 'f'
+
+    score = lambda c: (c.get('vision_score', 5.0), c.get('heur_score', 0.0))
+    cands.sort(key=score, reverse=True)
+    lead = next((c for c in cands if worthy(c)), cands[0])
+    rest = [c for c in cands if c is not lead]
+    if kind != 'star':
+        # a timeline or theme is a parade of faces: at most two photos of
+        # anyone (a test short drew Mary Pickford four times)
+        seen_n: Dict[str, int] = {lead['_name']: 1} if lead['_name'] else {}
+        capped = []
+        for c in rest:
+            if c['_name']:
+                seen_n[c['_name']] = seen_n.get(c['_name'], 0) + 1
+                if seen_n[c['_name']] > 2:
+                    continue
+            capped.append(c)
+        rest = capped
+    n = min(keep - 1, len(rest))
+    ykey = lambda c: (c['_ay'] or 3000, -c.get('heur_score', 0.0))
+
+    def pick(group: List[dict], k: int) -> List[dict]:
+        if k <= 0:
+            return []
+        if kind != 'timeline':
+            return sorted(group, key=score, reverse=True)[:k]
+        # one per era per round, oldest era first, so a 12-photo short
+        # covers the decades instead of twelve 1920s stills
+        buckets: Dict[str, List[dict]] = {}
+        for c in sorted(group, key=score, reverse=True):
+            e = hd.era_for(c['_year']) if c['_year'] else None
+            buckets.setdefault(e['key'] if e else '~', []).append(c)
+        order = [e['key'] for e in hd.ERAS if e['key'] in buckets]
+        got: List[dict] = []
+        while len(got) < k and any(buckets[x] for x in order):
+            for x in order:
+                if buckets[x] and len(got) < k:
+                    got.append(buckets[x].pop(0))
+        return got + buckets.get('~', [])[:k - len(got)]
+
+    # The 50% frame (final index 6) is chosen FIRST, then the timeline is
+    # built around it -- earlier photos before, later after -- so the order
+    # stays strictly chronological and the thumbnail is still a leading lady.
+    pivot = min(5, n - 1)
+    cands_p = [c for c in rest if worthy(c)]
+    line: List[dict] = []
+    if cands_p and pivot >= 0:
+        def balance(p):
+            b = sum(1 for x in rest if x is not p and ykey(x)[0] <= ykey(p)[0])
+            a = len(rest) - 1 - b
+            return (min(b, pivot) + min(a, n - 1 - pivot), score(p))
+        p = max(cands_p, key=balance)
+        others = [x for x in rest if x is not p]
+        before = [x for x in others if ykey(x)[0] <= ykey(p)[0]]
+        after = [x for x in others if ykey(x)[0] > ykey(p)[0]]
+        nb = min(pivot, len(before))
+        na = min(n - 1 - nb, len(after))
+        nb = min(n - 1 - na, len(before))
+        line = sorted(pick(before, nb), key=ykey) + [p] + sorted(pick(after, na), key=ykey)
+        pivot = nb
+    else:
+        line = sorted(pick(rest, n), key=ykey)
+    out = [lead] + line
+    print("  timeline: " + ' '.join(str(c['_year'] or '?') for c in out[1:])
+          + f" | lead: {lead['_name'] or '?'} | 50% frame: "
+          + ((out[pivot + 1]['_name'] or '?') if 0 <= pivot < len(line) else '-'))
+    return out
+
+
+def _plan_history(clips: List[dict], kind: str, focus_star: str,
+                  story: Optional[dict], last_i: int) -> dict:
+    """Wording for a history short: a promise on the cold open, a year ticker
+    on every dated photo, and per-photo captions that alternate between who
+    (name, year, a light detail), when ("That year, ...") and one line of
+    their own dialogue. Same return shape as _plan_wording, plus 'tickers'."""
+    import star_data as sd
+    import history_data as hd
+    led = _load_ledger()
+    recent_q = led.get('quotes', [])[-30:]
+    recent_ev = led.get('events', [])[-16:]
+    W = int(getattr(config, 'SHORT_CAPTION_WIDTH', 840))
+    serif = getattr(config, 'SERIF_FONT_FILE', None)
+
+    def block(text, size=60, min_size=44, max_lines=4):
+        return {'text': _smart_quotes(text), 'size': size, 'min_size': min_size,
+                'max_lines': max_lines, 'plate': False, 'band': (0.60, 0.80),
+                'width': W, 'font': serif}
+
+    names = {i: c.get('_name') for i, c in enumerate(clips)}
+    years = {i: c.get('_year') for i, c in enumerate(clips)}
+    dated = [years[i] for i in range(1, len(clips)) if years[i]]
+    y0, y1 = (min(dated), max(dated)) if dated else (None, None)
+    blocks, extra, tickers, captions = {}, {}, {}, {}
+
+    # 1) the promise, over the cold open
+    if story:
+        hook = story['hook']
+    elif kind == 'star':
+        facts = sd.facts_for(focus_star)
+        nick = next((f for f in facts if re.search(r"(?<=\s)'[^']+'", f)
+                     and 'hairstyle' not in f), None)
+        tag = nick or (facts[0] if facts else '')
+        span = f"{focus_star}, {y0} to {y1}" if y0 and y1 and y1 - y0 >= 3 else focus_star
+        hook = f"{span}. {tag}." if tag else f"{span}, through the years."
+    elif y0 and y1 and y1 - y0 >= 15:
+        hook = f"{y0} to {y1}: Hollywood glamour, decade by decade."
+    elif y0 and y1:
+        hook = f"Hollywood glamour, {y0} to {y1}."
+    else:
+        hook = "Hollywood glamour, decade by decade."
+    blocks[0] = block(hook, size=70, min_size=52, max_lines=3)
+
+    # 2) year ticker on dated photos (never backwards; the last clip's top
+    #    bar belongs to the comment question)
+    if getattr(config, 'SHORT_TICKER', True):
+        prev = 0
+        for i in range(1, last_i):
+            y = years[i]
+            if y and y >= prev:
+                e = hd.era_for(y)
+                tickers[i] = (str(y), e['tag'] if e else '')
+                prev = y
+
+    # 3) "That year, ..." lines: prefer the first photo of each new era,
+    #    spaced out, never about the same star the event names
+    want = int(getattr(config, 'SHORT_HISTORY_LINES', 3))
+    slots, used_ev = [], set()
+    def _event_for(i):
+        y = years[i]
+        if not y:
+            return None
+        for k in range(3):
+            ev = hd.year_event(y, seed=k + i)
+            if not ev or ev in used_ev:
+                continue
+            nm = names[i]
+            if nm and nm.split()[-1].lower() in ev.lower():
+                continue
+            return ev
+        return None
+    eras = {i: (hd.era_for(years[i]) or {}).get('key') for i in range(len(clips))}
+    order = sorted(range(1, last_i + 1),
+                   key=lambda i: (0 if eras[i] and eras[i] != eras.get(i - 1) else 1,
+                                  1 if (_event_for(i) or '') in recent_ev else 0, i))
+    for i in order:
+        if len(slots) >= want:
+            break
+        ev = _event_for(i)
+        if ev and all(abs(i - j) > 1 for j, _ in slots):
+            slots.append((i, ev))
+            used_ev.add(ev)
+    hist = dict(slots)
+
+    # 4) one real line of dialogue, from the person on screen
+    quote = None
+    if getattr(config, 'SHORT_QUOTE_CARDS', True) and random.random() < 0.7:
+        qslots = [i for i in range(1, last_i + 1) if names[i] and i not in hist]
+        random.shuffle(qslots)
+        for i in qslots:
+            fresh = [q for q in sd.quotes_for(names[i]) if q[0] not in recent_q]
+            if fresh:
+                quote = (i,) + tuple(random.choice(fresh))
+                break
+
+    # 5) captions. A fact that retells one of the short's "That year" lines
+    # ("Co-founded United Artists" next to "...founded United Artists") is
+    # skipped: shared capitalised phrases mark the same story.
+    ev_phrases = set()
+    for _, ev in slots:
+        ev_phrases |= set(re.findall(r"[A-Z][\w'-]+(?: [A-Z][\w'-]+)+", ev))
+    retells = lambda f: any(ph in f for ph in ev_phrases)
+    fact_n: Dict[str, int] = {}
+    for i in range(1, len(clips)):
+        c, name, y = clips[i], names[i], years[i]
+        head = f"{name}, {y}." if name and y else (f"{name}." if name else '')
+        if i in hist:
+            ev = hist[i]
+            text = f"{head} That year, {ev}." if head else f"In {y}, {ev}."
+            extra[i] = 0.9
+        elif quote and quote[0] == i:
+            text = sd.montage_caption(name, y, quote=(quote[1], quote[2]))
+            extra[i] = max(0.0, min(1.5, len(text) / 14.0 - 4.4))
+        else:
+            detail = None
+            if name:
+                k = fact_n.get(name, 0)
+                pool = ([hd.theme_fact(story, name)] if story and hd.theme_fact(story, name)
+                        else []) + [f for f in sd.facts_for(name)
+                                    if f != (hd.theme_fact(story, name) if story else None)]
+                pool = [f for f in pool if not retells(f)]
+                if k < len(pool):
+                    detail = pool[k]
+                fact_n[name] = k + 1
+            if detail:
+                text = f"{head} {detail.rstrip('.')}."
+            elif name:
+                film = re.search(r'in "([^"]+)"', c.get('caption') or '')
+                text = (f"{name} in {film.group(1)}, {y}." if film and y else head)
+            else:
+                text = sd.montage_caption(None, None, c.get('caption') or '')
+        if text:
+            blocks[i] = block(text)
+            captions[i] = blocks[i]['text']
+
+    if story:
+        end_prompt = tuple(story['prompt'])
+    else:
+        opts = [tuple(p) for p in getattr(config, 'SHORT_HISTORY_PROMPTS', [])]
+        fresh = [p for p in opts if p[0] not in led.get('prompts', [])[-2:]] or opts
+        end_prompt = random.choice(fresh) if fresh else ()
+    led['quotes'] = (led.get('quotes', []) + ([quote[1]] if quote else []))[-100:]
+    led['events'] = (led.get('events', []) + [ev for _, ev in slots])[-60:]
+    led['prompts'] = (led.get('prompts', []) + ([end_prompt[0]] if end_prompt else []))[-20:]
+    _save_ledger(led)
+
+    who = list(dict.fromkeys(n for n in names.values() if n))
+    return {'plates': {}, 'blocks': blocks, 'extra_secs': extra, 'tickers': tickers,
+            'hook': hook, 'quote': (quote[1], quote[2], names[quote[0]]) if quote else None,
+            'names': who, 'wit': [], 'captions': {i: t for i, t in captions.items()},
+            'history_lines': [[years[i], ev] for i, ev in slots],
+            'years': [y0, y1] if y0 else [],
+            'eras': [e['key'] for e in hd.eras_in(list(years.values()))],
+            'end_prompt': end_prompt}

@@ -101,6 +101,150 @@ STAR_INFO: Dict[str, Tuple[str, int]] = {
     'james garner': ('m', 1928), 'audie murphy': ('m', 1925),
 }
 
+# 2026-10: more of the pool's faces. Recognising the MEN matters as much as the
+# women: an unrecognised Ronald Colman fronted a short titled "Most Beautiful
+# Actresses...". Recognising more silent-era women gives their photos a proper
+# "Name, year." caption instead of raw archive text.
+STAR_INFO.update({
+    'ronald colman': ('m', 1891), 'john gilbert': ('m', 1897), 'ramon novarro': ('m', 1899),
+    'wallace reid': ('m', 1891), 'harold lloyd': ('m', 1893), 'william powell': ('m', 1892),
+    'fredric march': ('m', 1897), 'leslie howard': ('m', 1893), 'robert donat': ('m', 1905),
+    'joel mccrea': ('m', 1905), 'ray milland': ('m', 1907), 'dick powell': ('m', 1904),
+    'george raft': ('m', 1901), 'james cagney': ('m', 1899), 'edward g. robinson': ('m', 1893),
+    'paul muni': ('m', 1895), 'laurence olivier': ('m', 1907), 'orson welles': ('m', 1915),
+    'robert montgomery': ('m', 1904), 'melvyn douglas': ('m', 1901), 'franchot tone': ('m', 1905),
+    'don ameche': ('m', 1908), 'dana andrews': ('m', 1909), 'cornel wilde': ('m', 1912),
+    'john garfield': ('m', 1913), 'van johnson': ('m', 1916), 'tom mix': ('m', 1880),
+    'william s. hart': ('m', 1864), 'john barrymore': ('m', 1882), 'lionel barrymore': ('m', 1878),
+    'adolphe menjou': ('m', 1890), 'maurice chevalier': ('m', 1888), 'charles boyer': ('m', 1899),
+    'cesar romero': ('m', 1907), 'gilbert roland': ('m', 1905), 'mickey rooney': ('m', 1920),
+    'elvis presley': ('m', 1935), 'yul brynner': ('m', 1920), 'sean connery': ('m', 1930),
+    'rex harrison': ('m', 1908), 'david niven': ('m', 1910), 'peter lawford': ('m', 1923),
+    'jack lemmon': ('m', 1925), 'walter pidgeon': ('m', 1897), 'ronald reagan': ('m', 1911),
+    'bob hope': ('m', 1903), 'groucho marx': ('m', 1890), 'lew ayres': ('m', 1908),
+    'nelson eddy': ('m', 1901), 'john payne': ('m', 1912), 'robert ryan': ('m', 1909),
+    'richard widmark': ('m', 1914), 'conrad nagel': ('m', 1897), 'antonio moreno': ('m', 1887),
+    'richard barthelmess': ('m', 1895), 'william haines': ('m', 1900), 'rod la rocque': ('m', 1898),
+    'thomas meighan': ('m', 1879), 'milton sills': ('m', 1882), 'warner baxter': ('m', 1889),
+    'clive brook': ('m', 1887), 'herbert marshall': ('m', 1890), 'george brent': ('m', 1904),
+    "pat o'brien": ('m', 1899), 'basil rathbone': ('m', 1892), 'boris karloff': ('m', 1887),
+    'bela lugosi': ('m', 1882), 'claude rains': ('m', 1889), 'peter lorre': ('m', 1904),
+    'jack holt': ('m', 1888), 'norman kerry': ('m', 1894), 'john boles': ('m', 1895),
+    # silent-era and studio-era women the pool holds many photos of
+    'norma talmadge': ('f', 1894), 'constance talmadge': ('f', 1898), 'mae murray': ('f', 1885),
+    'mabel normand': ('f', 1892), 'billie dove': ('f', 1903), 'corinne griffith': ('f', 1894),
+    'nita naldi': ('f', 1894), 'alice terry': ('f', 1899), 'lila lee': ('f', 1901),
+    'agnes ayres': ('f', 1898), 'leatrice joy': ('f', 1893), 'mary astor': ('f', 1906),
+    'joan blondell': ('f', 1906), 'jeanette macdonald': ('f', 1903), 'ruby keeler': ('f', 1909),
+    'ann harding': ('f', 1902), 'nancy carroll': ('f', 1903), 'madge bellamy': ('f', 1899),
+    'esther ralston': ('f', 1902), 'dorothy mackaill': ('f', 1903), 'vilma banky': ('f', 1901),
+    'dolores costello': ('f', 1903), 'lupe velez': ('f', 1908), 'betty compson': ('f', 1897),
+    'bessie love': ('f', 1898), 'frances farmer': ('f', 1913), 'ann miller': ('f', 1923),
+    'june allyson': ('f', 1917), 'lizabeth scott': ('f', 1922), 'arlene dahl': ('f', 1925),
+    'carole landis': ('f', 1919), 'evelyn keyes': ('f', 1916), 'gail russell': ('f', 1924),
+    'jane wyman': ('f', 1917), 'ella raines': ('f', 1920), 'marie prevost': ('f', 1896),
+    'phyllis haver': ('f', 1899), 'dorothy dalton': ('f', 1893), 'mary brian': ('f', 1906),
+    'thelma todd': ('f', 1906), 'clara kimball young': ('f', 1890), 'anita stewart': ('f', 1895),
+    'blanche sweet': ('f', 1896), 'mae marsh': ('f', 1894), 'dorothy gish': ('f', 1898),
+    'pearl white': ('f', 1889), 'alla nazimova': ('f', 1879), 'viola dana': ('f', 1897),
+    'edna purviance': ('f', 1895), 'olive thomas': ('f', 1894), 'marguerite clark': ('f', 1883),
+    'florence lawrence': ('f', 1886), 'lois wilson': ('f', 1894), 'jacqueline logan': ('f', 1904),
+    'lili damita': ('f', 1904), 'ann dvorak': ('f', 1911), 'virginia bruce': ('f', 1910),
+    'frances dee': ('f', 1909), 'gloria stuart': ('f', 1910), 'anita page': ('f', 1910),
+    'marsha hunt': ('f', 1917), 'vera-ellen': ('f', 1921), 'piper laurie': ('f', 1932),
+    'toby wing': ('f', 1915), 'joan leslie': ('f', 1925), 'jean parker': ('f', 1915),
+})
+
+# Common men's first names, for people the tables above don't know: a caption
+# naming "Wallace Beery" or "Ronald ..." means a man is on screen, whatever the
+# STAR_INFO coverage.
+_MALE_FIRST = {
+    'john', 'william', 'james', 'robert', 'charles', 'george', 'richard', 'ronald',
+    'douglas', 'harold', 'wallace', 'ramon', 'rudolph', 'lon', 'tom', 'buster', 'jack',
+    'joseph', 'edward', 'frank', 'henry', 'thomas', 'walter', 'harry', 'fred', 'paul',
+    'peter', 'david', 'michael', 'arthur', 'albert', 'louis', 'ralph', 'howard', 'clark',
+    'cary', 'gary', 'errol', 'gregory', 'marlon', 'spencer', 'tyrone', 'kirk', 'burt',
+    'rock', 'gene', 'steve', 'tony', 'alan', 'glenn', 'montgomery', 'charlton', 'dean',
+    'bing', 'erich', 'victor', 'randolph', 'audie', 'humphrey', 'fredric',
+    'joel', 'ray', 'dick', 'edmund', 'lionel', 'adolphe', 'maurice', 'cesar', 'gilbert',
+    'mickey', 'elvis', 'yul', 'sean', 'rex', 'van', 'cornel', 'orson', 'laurence',
+    'melvyn', 'franchot', 'don', 'milton', 'warner', 'clive', 'herbert', 'basil', 'boris',
+    'bela', 'claude', 'conrad', 'antonio', 'norman', 'rod', 'lew', 'nelson', 'warren',
+    'wallace', 'william', 'hobart', 'monte', 'ricardo', 'noah', 'lloyd', 'eddie', 'bert',
+}
+
+
+_FEMALE_FIRST = {
+    'mary', 'helen', 'margaret', 'dorothy', 'ruth', 'anna', 'elizabeth', 'mildred', 'frances',
+    'marie', 'alice', 'florence', 'evelyn', 'lillian', 'gladys', 'edna', 'ethel', 'grace',
+    'rose', 'irene', 'louise', 'clara', 'gloria', 'betty', 'jean', 'joan', 'lois', 'doris',
+    'virginia', 'marion', 'martha', 'ann', 'anne', 'anita', 'bebe', 'billie', 'blanche',
+    'carole', 'claudette', 'colleen', 'constance', 'corinne', 'daisy', 'dolores', 'edith',
+    'eleanor', 'estelle', 'esther', 'fay', 'gail', 'greta', 'hedy', 'ida', 'janet', 'jane',
+    'jeanette', 'jeanne', 'joyce', 'june', 'kay', 'laura', 'lauren', 'leatrice', 'lila',
+    'lili', 'linda', 'loretta', 'lucille', 'lupe', 'mabel', 'madge', 'mae', 'marguerite',
+    'marilyn', 'marjorie', 'marlene', 'maureen', 'merle', 'miriam', 'myrna', 'nancy',
+    'natalie', 'nita', 'norma', 'olive', 'olivia', 'paulette', 'pearl', 'phyllis', 'pola',
+    'priscilla', 'rita', 'rosalind', 'ruby', 'sally', 'shirley', 'sue', 'susan', 'sylvia',
+    'thelma', 'theda', 'vera', 'veronica', 'viola', 'vivian', 'vivien', 'wanda', 'zasu',
+    'barbara', 'bessie', 'catherine', 'charlotte', 'claire', 'eva', 'eve', 'harriet',
+    'josephine', 'julia', 'julie', 'katharine', 'katherine', 'kathryn', 'lana', 'lena',
+    'leila', 'lucy', 'mona', 'nora', 'patricia', 'peggy', 'ramona', 'renee', 'rosemary',
+    'sarah', 'sophia', 'tallulah', 'vilma', 'winifred', 'ava', 'audrey', 'bette', 'debbie',
+    'deborah', 'diana', 'donna', 'ella', 'elsa', 'gina', 'ginger', 'hazel', 'hilda',
+    'jayne', 'judy', 'kim', 'lizabeth', 'marian', 'maria', 'marsha', 'mitzi', 'muriel',
+    'olga', 'rhonda', 'rochelle', 'toby', 'yvonne', 'agnes', 'alma', 'alla', 'carmel',
+    'carmen', 'cyd', 'gertrude', 'jacqueline', 'lottie', 'madeline', 'may', 'pauline',
+    'mamie', 'jeanette', 'hope', 'joanne', 'lillie', 'minnie', 'nell', 'texas', 'zita',
+}
+
+
+def looks_like_person(name: str) -> bool:
+    """True when a parsed 'name' starts with a real first name. Archive
+    captions often lead with a FILM title -- "My Man Godfrey", "Her Soul's
+    Inspiration", "Brother Rat" -- which must not be captioned as a person."""
+    first = (name or '').strip().split(' ')[0].lower()
+    return first in _MALE_FIRST or first in _FEMALE_FIRST
+
+
+def likely_male(name: Optional[str]) -> bool:
+    """True when a name is a known man, or starts with a common man's first name."""
+    if not name:
+        return False
+    g = star_gender(name)
+    if g:
+        return g == 'm'
+    first = name.strip().split()[0].lower() if name.strip() else ''
+    return first in _MALE_FIRST
+
+
+# Childhood photos of later stars ("Jean Harlow (taken at age 3)", "Baby
+# Gumm"). Never in a short tagged for glamour, never captioned with an adult
+# star's nickname -- a brand-safety line, not a style choice.
+_CHILD_RE = None
+_CHILD_STARS = {'shirley temple'}
+
+
+def is_child_photo(text: str, name: Optional[str] = None, year: Optional[int] = None) -> bool:
+    import re
+    global _CHILD_RE
+    if _CHILD_RE is None:
+        _CHILD_RE = re.compile(
+            r"\b(?:taken )?at (?:the )?age (?:of )?(?:[1-9]|1[0-5])\b|\baged? (?:[1-9]|1[0-5])\b|"
+            r"(?<!bringing up )(?<!and a )\bbaby\b(?! face| doll| jane| mine)|\bas an? (?:child|baby|toddler|girl|boy)\b|\bchildhood\b|"
+            r"\btoddler\b|\binfant\b|\b(?:[1-9]|1[0-5])[- ]years?[- ]old\b", re.I)
+    if _CHILD_RE.search(text or ''):
+        return True
+    # Stars whose public-domain photos are overwhelmingly from childhood:
+    # without a year proving otherwise, assume a child.
+    if name and _key(name) in _CHILD_STARS and not (year and year >= STAR_INFO[_key(name)][1] + 16):
+        return True
+    if name and year:
+        info = STAR_INFO.get(_key(name))
+        if info and year < info[1] + 16:
+            return True
+    return False
+
 # name (lowercase) -> [(quote, source)]. Film lines are attributed to the
 # actor who spoke them; the source names the film so it can be checked.
 QUOTES: Dict[str, List[Tuple[str, str]]] = {
@@ -300,7 +444,9 @@ DISPLAY = {"maureen o'hara": "Maureen O'Hara", 'ann-margret': 'Ann-Margret',
            'dolores del rio': 'Dolores del Rio', 'dolores rio': 'Dolores del Rio',
            'mamie van doren': 'Mamie Van Doren', 'olivia de havilland': 'Olivia de Havilland',
            'yvonne de carlo': 'Yvonne De Carlo', 'erich von stroheim': 'Erich von Stroheim',
-           'shirley maclaine': 'Shirley MacLaine', 'steve mcqueen': 'Steve McQueen'}
+           'shirley maclaine': 'Shirley MacLaine', 'steve mcqueen': 'Steve McQueen',
+           'joel mccrea': 'Joel McCrea', "pat o'brien": "Pat O'Brien",
+           'jeanette macdonald': 'Jeanette MacDonald', 'vera-ellen': 'Vera-Ellen'}
 _ALIASES = {'dolores rio': 'dolores del rio'}
 
 
@@ -527,6 +673,8 @@ def montage_caption(name, year, raw_caption: str = '', seed: int = 0, quote=None
     while words and words[-1].rstrip("'s") in _NOT_A_NAME:
         words.pop()
     if len(words) < 2 or any(w in _NOT_A_NAME for w in words):
+        return ''
+    if not looks_like_person(' '.join(words)):
         return ''
     return f"{' '.join(words)}, {y.group(1)}."
 
