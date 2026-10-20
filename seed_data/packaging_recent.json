@@ -37,6 +37,33 @@
   "Louis, I think this is the beginning of a beautiful friendship.",
   "I want to be alone.",
   "Real diamonds! They must be worth their weight in gold!",
-  "I always get the fuzzy end of the lollipop."
+  "I always get the fuzzy end of the lollipop.",
+  "You know how to whistle, don't you, Steve? You just put your lips together and blow.",
+  "Frankly, my dear, I don't give a damn."
+ ],
+ "events": [
+  "Don Juan premiered with a synchronized score and sound effects",
+  "Becky Sharp became the first feature in three-strip Technicolor",
+  "the war ended and Hollywood's stars came home",
+  "Casablanca premiered and the Hollywood Canteen opened its doors",
+  "Pickford, Chaplin, Fairbanks and Griffith founded United Artists",
+  "the Hollywoodland sign went up in the hills above Los Angeles",
+  "Clara Bow became the 'It Girl' in It",
+  "All About Eve and Sunset Boulevard both premiered",
+  "Breakfast at Tiffany's premiered",
+  "American movie attendance hit its postwar peak",
+  "Hitchcock's Vertigo premiered",
+  "the Production Code began to be strictly enforced"
+ ],
+ "prompts": [
+  "Who did we miss?",
+  "Ever been to a boardwalk?",
+  "Who deserved more Oscars?",
+  "Best screen couple ever?"
+ ],
+ "themes": [
+  "beach",
+  "oscars",
+  "couples"
  ]
 }
