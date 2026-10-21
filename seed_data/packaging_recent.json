@@ -53,17 +53,36 @@
   "Breakfast at Tiffany's premiered",
   "American movie attendance hit its postwar peak",
   "Hitchcock's Vertigo premiered",
-  "the Production Code began to be strictly enforced"
+  "the Production Code began to be strictly enforced",
+  "CinemaScope debuted with The Robe",
+  "All About Eve and Sunset Boulevard both premiered",
+  "Grace Kelly starred in Rear Window and The Country Girl",
+  "the first Academy Awards were presented in Hollywood",
+  "The Adventures of Robin Hood dazzled audiences in Technicolor",
+  "Betty Grable posed for the most famous pinup photo of the war",
+  "The Jazz Singer brought spoken dialogue to the movies",
+  "Citizen Kane premiered",
+  "Grace Kelly married Prince Rainier and became Princess of Monaco",
+  "Greta Garbo spoke her first lines on screen in Anna Christie",
+  "The Adventures of Robin Hood dazzled audiences in Technicolor"
  ],
  "prompts": [
   "Who did we miss?",
   "Ever been to a boardwalk?",
   "Who deserved more Oscars?",
-  "Best screen couple ever?"
+  "Best screen couple ever?",
+  "Drive-in or movie palace?",
+  "Which decade was the best?",
+  "Who did we miss?",
+  "Which era would you visit?"
  ],
  "themes": [
   "beach",
   "oscars",
-  "couples"
+  "couples",
+  "fifties"
+ ],
+ "lf_themes": [
+  "beach"
  ]
 }
