@@ -39,7 +39,9 @@
   "Real diamonds! They must be worth their weight in gold!",
   "I always get the fuzzy end of the lollipop.",
   "You know how to whistle, don't you, Steve? You just put your lips together and blow.",
-  "Frankly, my dear, I don't give a damn."
+  "Frankly, my dear, I don't give a damn.",
+  "Would you be shocked if I put on something more comfortable?",
+  "You never really understand a person until you consider things from his point of view."
  ],
  "events": [
   "Don Juan premiered with a synchronized score and sound effects",
@@ -73,7 +75,16 @@
   "television's first Emmy Awards were presented",
   "Casablanca premiered and the Hollywood Canteen opened its doors",
   "Citizen Kane premiered",
-  "Betty Grable posed for the most famous pinup photo of the war"
+  "Betty Grable posed for the most famous pinup photo of the war",
+  "Pickford, Chaplin, Fairbanks and Griffith founded United Artists",
+  "Grace Kelly starred in Rear Window and The Country Girl",
+  "Breakfast at Tiffany's premiered",
+  "American movie attendance hit its postwar peak",
+  "CinemaScope debuted with The Robe",
+  "Breakfast at Tiffany's premiered",
+  "The Jazz Singer brought spoken dialogue to the movies",
+  "CinemaScope debuted with The Robe",
+  "Breakfast at Tiffany's premiered"
  ],
  "prompts": [
   "Who did we miss?",
@@ -86,7 +97,10 @@
   "Which era would you visit?",
   "Remember these faces?",
   "Who did we miss?",
-  "Who did Dad have a pinup of?"
+  "Who did Dad have a pinup of?",
+  "Remember these faces?",
+  "Who deserved more Oscars?",
+  "Which decade was the best?"
  ],
  "themes": [
   "beach",
@@ -94,7 +108,8 @@
   "couples",
   "fifties",
   "silent",
-  "war"
+  "war",
+  "oscars"
  ],
  "lf_themes": [
   "beach",
