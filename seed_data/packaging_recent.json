@@ -46,15 +46,6 @@
   "You should be kissed, and often, and by someone who knows how."
  ],
  "events": [
-  "Breakfast at Tiffany's premiered",
-  "American movie attendance hit its postwar peak",
-  "Hitchcock's Vertigo premiered",
-  "the Production Code began to be strictly enforced",
-  "CinemaScope debuted with The Robe",
-  "All About Eve and Sunset Boulevard both premiered",
-  "Grace Kelly starred in Rear Window and The Country Girl",
-  "the first Academy Awards were presented in Hollywood",
-  "The Adventures of Robin Hood dazzled audiences in Technicolor",
   "Betty Grable posed for the most famous pinup photo of the war",
   "The Jazz Singer brought spoken dialogue to the movies",
   "Citizen Kane premiered",
@@ -105,12 +96,18 @@
   "American movie attendance hit its postwar peak",
   "Clara Bow became the 'It Girl' in It",
   "Dr. No introduced James Bond to movie audiences",
-  "Don Juan premiered with a synchronized score and sound effects"
+  "Don Juan premiered with a synchronized score and sound effects",
+  "The Adventures of Robin Hood dazzled audiences in Technicolor",
+  "All About Eve and Sunset Boulevard both premiered",
+  "Greta Garbo spoke her first lines on screen in Anna Christie",
+  "Gone with the Wind and The Wizard of Oz both premiered",
+  "Casablanca premiered and the Hollywood Canteen opened its doors",
+  "My Fair Lady premiered",
+  "The Jazz Singer brought spoken dialogue to the movies",
+  "Mickey Mouse debuted in Steamboat Willie",
+  "Dracula and Frankenstein started Universal's monster craze"
  ],
  "prompts": [
-  "Drive-in or movie palace?",
-  "Which decade was the best?",
-  "Who did we miss?",
   "Which era would you visit?",
   "Remember these faces?",
   "Who did we miss?",
@@ -127,7 +124,10 @@
   "Remember these faces?",
   "Ever been to a boardwalk?",
   "Which era would you visit?",
-  "Which decade was the best?"
+  "Which decade was the best?",
+  "Best screen couple ever?",
+  "Which era would you visit?",
+  "Silent or talkie?"
  ],
  "themes": [
   "beach",
@@ -141,7 +141,9 @@
   "golden",
   "beach",
   "silent",
-  "nicknames"
+  "nicknames",
+  "couples",
+  "talkies"
  ],
  "lf_themes": [
   "beach",
