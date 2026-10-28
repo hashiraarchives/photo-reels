@@ -43,18 +43,12 @@
   "Would you be shocked if I put on something more comfortable?",
   "You never really understand a person until you consider things from his point of view.",
   "It took more than one man to change my name to Shanghai Lily.",
-  "You should be kissed, and often, and by someone who knows how."
+  "You should be kissed, and often, and by someone who knows how.",
+  "If I'd been a ranch, they would've named me the Bar Nothing.",
+  "We didn't need dialogue. We had faces!",
+  "Insanity runs in my family. It practically gallops."
  ],
  "events": [
-  "Betty Grable posed for the most famous pinup photo of the war",
-  "The Jazz Singer brought spoken dialogue to the movies",
-  "Citizen Kane premiered",
-  "Grace Kelly married Prince Rainier and became Princess of Monaco",
-  "Greta Garbo spoke her first lines on screen in Anna Christie",
-  "The Adventures of Robin Hood dazzled audiences in Technicolor",
-  "Rudolph Valentino became a sensation in The Sheik",
-  "The Philadelphia Story paired Katharine Hepburn, Cary Grant and James Stewart",
-  "the first Academy Awards were presented in Hollywood",
   "the Hollywoodland sign went up in the hills above Los Angeles",
   "Becky Sharp became the first feature in three-strip Technicolor",
   "television's first Emmy Awards were presented",
@@ -105,12 +99,18 @@
   "My Fair Lady premiered",
   "The Jazz Singer brought spoken dialogue to the movies",
   "Mickey Mouse debuted in Steamboat Willie",
-  "Dracula and Frankenstein started Universal's monster craze"
+  "Dracula and Frankenstein started Universal's monster craze",
+  "Citizen Kane premiered",
+  "I Love Lucy debuted on CBS",
+  "Greta Garbo spoke her first lines on screen in Anna Christie",
+  "the Hollywoodland sign went up in the hills above Los Angeles",
+  "Apollo 11 landed on the Moon",
+  "Mickey Mouse debuted in Steamboat Willie",
+  "Ben-Hur became the most expensive silent film ever made",
+  "Grace Kelly starred in Rear Window and The Country Girl",
+  "Citizen Kane premiered"
  ],
  "prompts": [
-  "Which era would you visit?",
-  "Remember these faces?",
-  "Who did we miss?",
   "Who did Dad have a pinup of?",
   "Remember these faces?",
   "Who deserved more Oscars?",
@@ -127,7 +127,10 @@
   "Which decade was the best?",
   "Best screen couple ever?",
   "Which era would you visit?",
-  "Silent or talkie?"
+  "Silent or talkie?",
+  "Who did we miss?",
+  "Remember these faces?",
+  "Which decade was the best?"
  ],
  "themes": [
   "beach",
