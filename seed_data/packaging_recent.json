@@ -49,18 +49,6 @@
   "Insanity runs in my family. It practically gallops."
  ],
  "events": [
-  "the Hollywoodland sign went up in the hills above Los Angeles",
-  "Becky Sharp became the first feature in three-strip Technicolor",
-  "television's first Emmy Awards were presented",
-  "Casablanca premiered and the Hollywood Canteen opened its doors",
-  "Citizen Kane premiered",
-  "Betty Grable posed for the most famous pinup photo of the war",
-  "Pickford, Chaplin, Fairbanks and Griffith founded United Artists",
-  "Grace Kelly starred in Rear Window and The Country Girl",
-  "Breakfast at Tiffany's premiered",
-  "American movie attendance hit its postwar peak",
-  "CinemaScope debuted with The Robe",
-  "Breakfast at Tiffany's premiered",
   "The Jazz Singer brought spoken dialogue to the movies",
   "CinemaScope debuted with The Robe",
   "Breakfast at Tiffany's premiered",
@@ -108,13 +96,21 @@
   "Mickey Mouse debuted in Steamboat Willie",
   "Ben-Hur became the most expensive silent film ever made",
   "Grace Kelly starred in Rear Window and The Country Girl",
-  "Citizen Kane premiered"
+  "Citizen Kane premiered",
+  "the Production Code began to be strictly enforced",
+  "Becky Sharp became the first feature in three-strip Technicolor",
+  "Chaplin said farewell to the Little Tramp in Modern Times",
+  "Casablanca premiered and the Hollywood Canteen opened its doors",
+  "Betty Grable posed for the most famous pinup photo of the war",
+  "the war ended and Hollywood's stars came home",
+  "Rudolph Valentino became a sensation in The Sheik",
+  "Don Juan premiered with a synchronized score and sound effects",
+  "Ben-Hur became the most expensive silent film ever made",
+  "Elvis Presley starred in Jailhouse Rock",
+  "Mickey Mouse debuted in Steamboat Willie",
+  "Ben-Hur and Some Like It Hot both premiered"
  ],
  "prompts": [
-  "Who did Dad have a pinup of?",
-  "Remember these faces?",
-  "Who deserved more Oscars?",
-  "Which decade was the best?",
   "Remember these faces?",
   "Silent or talkie?",
   "Which era would you visit?",
@@ -130,6 +126,10 @@
   "Silent or talkie?",
   "Who did we miss?",
   "Remember these faces?",
+  "Which decade was the best?",
+  "Best year for movies?",
+  "Who did Dad have a pinup of?",
+  "Could you watch a silent film?",
   "Which decade was the best?"
  ],
  "themes": [
@@ -146,7 +146,10 @@
   "silent",
   "nicknames",
   "couples",
-  "talkies"
+  "talkies",
+  "golden",
+  "war",
+  "silent"
  ],
  "lf_themes": [
   "beach",
