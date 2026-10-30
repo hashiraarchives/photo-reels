@@ -49,17 +49,6 @@
   "Insanity runs in my family. It practically gallops."
  ],
  "events": [
-  "The Jazz Singer brought spoken dialogue to the movies",
-  "CinemaScope debuted with The Robe",
-  "Breakfast at Tiffany's premiered",
-  "Chaplin said farewell to the Little Tramp in Modern Times",
-  "Grace Kelly married Prince Rainier and became Princess of Monaco",
-  "the first Academy Awards were presented in Hollywood",
-  "Clara Bow became the 'It Girl' in It",
-  "Mickey Mouse debuted in Steamboat Willie",
-  "Greta Garbo spoke her first lines on screen in Anna Christie",
-  "Casablanca premiered and the Hollywood Canteen opened its doors",
-  "the Paramount ruling began breaking up the studios' theater chains",
   "Dr. No introduced James Bond to movie audiences",
   "the Hollywoodland sign went up in the hills above Los Angeles",
   "Gone with the Wind and The Wizard of Oz both premiered",
@@ -108,13 +97,20 @@
   "Ben-Hur became the most expensive silent film ever made",
   "Elvis Presley starred in Jailhouse Rock",
   "Mickey Mouse debuted in Steamboat Willie",
-  "Ben-Hur and Some Like It Hot both premiered"
+  "Ben-Hur and Some Like It Hot both premiered",
+  "Greta Garbo spoke her first lines on screen in Anna Christie",
+  "It's a Wonderful Life premiered",
+  "Hitchcock's Psycho shocked audiences",
+  "Clara Bow became the 'It Girl' in It",
+  "the first Academy Awards were presented in Hollywood",
+  "Dracula and Frankenstein started Universal's monster craze",
+  "The Jazz Singer brought spoken dialogue to the movies",
+  "Breakfast at Tiffany's premiered",
+  "Chaplin said farewell to the Little Tramp in Modern Times",
+  "the war ended and Hollywood's stars came home",
+  "Pickford, Chaplin, Fairbanks and Griffith founded United Artists"
  ],
  "prompts": [
-  "Remember these faces?",
-  "Silent or talkie?",
-  "Which era would you visit?",
-  "Which decade was the best?",
   "Best year for movies?",
   "Which era would you visit?",
   "Remember these faces?",
@@ -130,7 +126,11 @@
   "Best year for movies?",
   "Who did Dad have a pinup of?",
   "Could you watch a silent film?",
-  "Which decade was the best?"
+  "Which decade was the best?",
+  "Which nickname fits best?",
+  "Silent or talkie?",
+  "Which decade was the best?",
+  "Ever been to a boardwalk?"
  ],
  "themes": [
   "beach",
@@ -149,7 +149,10 @@
   "talkies",
   "golden",
   "war",
-  "silent"
+  "silent",
+  "nicknames",
+  "talkies",
+  "beach"
  ],
  "lf_themes": [
   "beach",
