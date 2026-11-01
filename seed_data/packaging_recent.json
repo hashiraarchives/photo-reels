@@ -49,15 +49,6 @@
   "Insanity runs in my family. It practically gallops."
  ],
  "events": [
-  "Disney's Snow White became America's first full-length animated feature",
-  "Singin' in the Rain premiered",
-  "the first Academy Awards were presented in Hollywood",
-  "Greta Garbo spoke her first lines on screen in Anna Christie",
-  "The Jazz Singer brought spoken dialogue to the movies",
-  "Grace Kelly starred in Rear Window and The Country Girl",
-  "Disney's Snow White became America's first full-length animated feature",
-  "Grand Hotel brought an all-star cast to the screen",
-  "Don Juan premiered with a synchronized score and sound effects",
   "American movie attendance hit its postwar peak",
   "Clara Bow became the 'It Girl' in It",
   "Dr. No introduced James Bond to movie audiences",
@@ -108,12 +99,18 @@
   "Clara Bow became the 'It Girl' in It",
   "Rudolph Valentino became a sensation in The Sheik",
   "Ben-Hur became the most expensive silent film ever made",
-  "Don Juan premiered with a synchronized score and sound effects"
+  "Don Juan premiered with a synchronized score and sound effects",
+  "Grace Kelly starred in Rear Window and The Country Girl",
+  "Clara Bow became the 'It Girl' in It",
+  "the first Academy Awards were presented in Hollywood",
+  "Singin' in the Rain premiered",
+  "the first Academy Awards were presented in Hollywood",
+  "Breakfast at Tiffany's premiered",
+  "Mickey Mouse debuted in Steamboat Willie",
+  "Going My Way and Double Indemnity filled theaters",
+  "Hitchcock's Psycho shocked audiences"
  ],
  "prompts": [
-  "Remember these faces?",
-  "Ever been to a boardwalk?",
-  "Which era would you visit?",
   "Which decade was the best?",
   "Best screen couple ever?",
   "Which era would you visit?",
@@ -130,7 +127,10 @@
   "Which decade was the best?",
   "Ever been to a boardwalk?",
   "Who did we miss?",
-  "Could you watch a silent film?"
+  "Could you watch a silent film?",
+  "Which era would you visit?",
+  "Who did we miss?",
+  "Which decade was the best?"
  ],
  "themes": [
   "beach",
