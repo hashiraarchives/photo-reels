@@ -112,8 +112,27 @@ IMAGE_DURATION = 12        # seconds per image (verified reference-channel pace)
 LOGO_DURATION = 15         # seconds for intro video (intro.mp4)
 VIDEO_LENGTH_MIN = 19      # minutes minimum
 VIDEO_LENGTH_MAX = 22      # minutes maximum
-IMAGES_PER_VIDEO = 70      # 2026-10: ~14 min (owner: 12-15 min works well; the pool
-                           # could no longer refill 100 photos a day at a 30-day reuse)
+IMAGES_PER_VIDEO = 80      # 2026-11: ~40 min SLOW format (owner). Length comes from
+                           # longer holds, not many more photos: the pool could not
+                           # refill 100 a day at a 30-day reuse.
+
+# === LONG-FORM PACING (owner, 2026-11-02) ===
+# "Go slower, around 40 minutes": 7-10% of viewers stay to the end of a relaxing
+# video, so the pace eases off as it goes and the closing photos linger for a
+# minute or more. Durations ramp from PACE_START to PACE_END across the body and
+# are then scaled so the whole video lands near the target; FINALE holds apply
+# to the last few photos.
+LONGFORM_TARGET_MINUTES = 40
+LONGFORM_PACE_START = 14   # seconds per photo just after the quick opening
+LONGFORM_PACE_END = 30     # ...easing to this by the end of the body
+LONGFORM_PACE_MAX = 45     # never hold a body photo longer than this
+LONGFORM_FINALE = [45, 60, 75, 90]   # the last photos linger
+
+# === LONG-FORM LOOK (owner, 2026-11-02): golden italic captions, dark amber ambience ===
+LONGFORM_CAPTION_COLOR = "0xF2C14E"      # warm golden yellow
+LONGFORM_CAPTION_OUTLINE = "0x140C02"    # near-black brown, softer than pure black
+LONGFORM_AMBER = True                    # amber-tinted backdrop + gentle warm tone on photos
+LONGFORM_WARM_TONE = 0.30                # 0 = untouched photo, 1 = full sepia-gold tone
 
 # === KEN BURNS EFFECT ===
 ZOOM_MIN = 1.0
@@ -410,6 +429,18 @@ SERIF_FONT_FILE = _first_font([
     r'C:\Windows\Fonts\palab.ttf',
     r'C:\Windows\Fonts\georgiab.ttf',
 ])
+def _italic_font():
+    import glob
+    for p in ('/usr/share/fonts/opentype/urw-base35/P052-BoldItalic.otf',
+              r'C:\Windows\Fonts\palabi.ttf', r'C:\Windows\Fonts\georgiaz.ttf'):
+        if os.path.exists(p):
+            return p
+    hits = glob.glob('/usr/share/fonts/**/P052-BoldItalic*', recursive=True)
+    return hits[0] if hits else SERIF_FONT_FILE
+
+
+# Long-form captions: a bold italic serif (P052 = Palatino design).
+LONGFORM_CAPTION_FONT = _italic_font()
 SERIF_FONT_REGULAR = _first_font([
     '/usr/share/fonts/opentype/urw-base35/P052-Roman.otf',
     '/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf',

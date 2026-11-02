@@ -750,6 +750,44 @@ def check_image_quality(path: str, longform: bool = False) -> Tuple[bool, str]:
     return True, "ok"
 
 
+def longform_durations(n: int, n_cards: int = 0) -> List[float]:
+    """Seconds per photo for a long-form video of n photos (owner, 2026-11-02:
+    slow, ~40 minutes, the closing photos lingering a minute or more). A quick
+    opening, a body that eases from PACE_START to PACE_END, scaled so the video
+    lands near LONGFORM_TARGET_MINUTES, then the FINALE holds."""
+    if n <= 0:
+        return []
+    fast_n = min(getattr(config, 'FAST_OPENING_CLIPS', 3), n)
+    fast_d = float(getattr(config, 'FAST_OPENING_DURATION', 10))
+    finale = list(getattr(config, 'LONGFORM_FINALE', []))
+    k = min(len(finale), max(0, (n - fast_n) // 6))
+    finale = [float(x) for x in finale[len(finale) - k:]] if k else []
+    m = n - fast_n - k
+    a = float(getattr(config, 'LONGFORM_PACE_START', config.IMAGE_DURATION))
+    b = float(getattr(config, 'LONGFORM_PACE_END', config.IMAGE_DURATION))
+    body = [a + (b - a) * (j / max(1, m - 1)) for j in range(m)]
+    target = getattr(config, 'LONGFORM_TARGET_MINUTES', None)
+    if target and body:
+        intro = float(getattr(config, 'INTRO_DURATION_OVERRIDE', None) or config.LOGO_DURATION)
+        cards = n_cards * float(getattr(config, 'ERA_CARD_DURATION', 6))
+        xf = getattr(config, 'XFADE_DUR', 0.5) * (n + n_cards)
+        room = target * 60 - intro - cards - fast_n * fast_d - sum(finale) + xf
+        f = max(0.6, room / sum(body))
+        cap = float(getattr(config, 'LONGFORM_PACE_MAX', 45))
+        body = [min(cap, max(8.0, d * f)) for d in body]
+    return [fast_d] * fast_n + [round(d, 1) for d in body] + finale
+
+
+def _amber(img: Image.Image, strength: float) -> Image.Image:
+    """Warm sepia-gold tone blended over the photo (the owner's 'darkish
+    yellow ambience'); strength 0 leaves it untouched."""
+    from PIL import ImageOps
+    if strength <= 0:
+        return img
+    toned = ImageOps.colorize(img.convert('L'), black=(18, 11, 3), white=(255, 236, 196))
+    return Image.blend(img.convert('RGB'), toned, min(1.0, strength))
+
+
 def resize_image_for_video(input_path: str, output_path: str) -> bool:
     """
     Resize image to fit 1920x1080 while showing the ENTIRE image.
@@ -791,12 +829,19 @@ def resize_image_for_video(input_path: str, output_path: str) -> bool:
             from PIL import ImageEnhance
             enhancer = ImageEnhance.Brightness(background)
             background = enhancer.enhance(0.4)
+            amber = getattr(config, 'LONGFORM_AMBER', False)
+            if amber:
+                # dark amber room around the photo, not grey-black
+                background = _amber(background, 0.85)
+                background = ImageEnhance.Brightness(background).enhance(0.8)
 
             # Scale main image to fit entirely within frame (no cropping)
             scale = min(target_w / orig_w, target_h / orig_h)
             new_w = int(orig_w * scale)
             new_h = int(orig_h * scale)
             main_img = img.resize((new_w, new_h), Image.LANCZOS)
+            if amber:
+                main_img = _amber(main_img, float(getattr(config, 'LONGFORM_WARM_TONE', 0.3)))
 
             # Center the main image on the blurred background
             paste_x = (target_w - new_w) // 2
@@ -1216,8 +1261,12 @@ def _build_caption_filter(wrap_info: Dict, caption_file_path: str) -> str:
         f.write(wrap_info['text'])
 
     serif = getattr(config, 'LONGFORM_SERIF_CAPTIONS', False)
-    font_path = _ffmpeg_escape_path(getattr(config, 'SERIF_FONT_FILE', config.CAPTION_FONT_FILE)
-                                    if serif else config.CAPTION_FONT_FILE)
+    font_path = _ffmpeg_escape_path(
+        getattr(config, 'LONGFORM_CAPTION_FONT', None)
+        or (getattr(config, 'SERIF_FONT_FILE', config.CAPTION_FONT_FILE) if serif
+            else config.CAPTION_FONT_FILE))
+    color = getattr(config, 'LONGFORM_CAPTION_COLOR', 'white')
+    edge = getattr(config, 'LONGFORM_CAPTION_OUTLINE', 'black')
     text_path = _ffmpeg_escape_path(caption_file_path)
 
     # Prestige caption look: pristine WHITE text with a bold BLACK OUTLINE
@@ -1236,15 +1285,23 @@ def _build_caption_filter(wrap_info: Dict, caption_file_path: str) -> str:
         layers.append(
             f"drawbox=x=0:y=ih-{wrap_info['box_height']}:w=iw:h={wrap_info['box_height']}:color=black@{bo}:t=fill"
         )
-    layers.append(
-        f"drawtext=textfile='{text_path}':"
-        f"fontfile='{font_path}':"
-        f"fontsize={fs}:fontcolor=white:"
-        f"borderw={outline}:bordercolor=black:"
-        f"shadowx={shadow}:shadowy={shadow}:shadowcolor=black@0.5:"
-        f"x=(w-text_w)/2:y={wrap_info['text_y']}:"
-        f"line_spacing={wrap_info['line_spacing']}"
-    )
+    # One drawtext per line: some fonts (Palatino italic among them) draw the
+    # newline itself as a box glyph, and per-line centring reads better anyway.
+    lines = wrap_info['text'].split('\n')
+    step = int(fs * 1.18) + wrap_info['line_spacing']
+    for j, ln in enumerate(lines):
+        lp = caption_file_path[:-4] + f"_{j}.txt" if caption_file_path.endswith('.txt') \
+            else f"{caption_file_path}_{j}"
+        with open(lp, 'w', encoding='utf-8', newline='') as f:
+            f.write(ln)
+        layers.append(
+            f"drawtext=textfile='{_ffmpeg_escape_path(lp)}':"
+            f"fontfile='{font_path}':"
+            f"fontsize={fs}:fontcolor={color}:"
+            f"borderw={outline}:bordercolor={edge}:"
+            f"shadowx={shadow}:shadowy={shadow}:shadowcolor=black@0.5:"
+            f"x=(w-text_w)/2:y={wrap_info['text_y']}+{j * step}"
+        )
     return "," + ",".join(layers)
 
 
@@ -1551,6 +1608,8 @@ def _make_card_image(spec: Dict, out_path: str) -> bool:
         bg = bg.filter(ImageFilter.GaussianBlur(int(26 * s)))
         bg = ImageEnhance.Color(bg).enhance(0.35)
         bg = ImageEnhance.Brightness(bg).enhance(0.26)
+        if getattr(config, 'LONGFORM_AMBER', False):
+            bg = ImageEnhance.Brightness(_amber(bg, 0.8)).enhance(0.85)
     except Exception:
         bg = Image.new('RGB', (W, H), (10, 9, 8))
     d = ImageDraw.Draw(bg)
@@ -1650,11 +1709,15 @@ def create_video(images: List[Dict], output_path: str, theme: str = "Classic_Hol
         FAST_OPENING_CLIPS = getattr(config, 'FAST_OPENING_CLIPS', 3)
         FAST_OPENING_DURATION = getattr(config, 'FAST_OPENING_DURATION', 10)
 
-        def planned_image_duration(idx: int) -> int:
+        planned_count = min(target_count or len(images), len(images))
+        _sched = longform_durations(planned_count)
+
+        def planned_image_duration(idx: int) -> float:
+            if idx < len(_sched):
+                return _sched[idx]
             return FAST_OPENING_DURATION if idx < FAST_OPENING_CLIPS else image_duration
 
-        planned_count = min(target_count or len(images), len(images))
-        planned_total = logo_duration + sum(planned_image_duration(i) for i in range(planned_count))
+        planned_total = logo_duration + sum(_sched)
         print(f"Video will be ~{planned_total} seconds ({planned_total/60:.1f} minutes)")
 
         # Step 1: Download and resize all images
@@ -1930,6 +1993,12 @@ def create_video(images: List[Dict], output_path: str, theme: str = "Classic_Hol
         else:
             sequence = [('photo', c) for c in image_paths]
         card_d = float(getattr(config, 'ERA_CARD_DURATION', 6))
+        # Re-plan for the photos that actually arrived (and the cards between
+        # them) so the slow schedule still ends on its long finale holds.
+        _sched = longform_durations(sum(1 for k_, _ in sequence if k_ == 'photo'),
+                                    sum(1 for k_, _ in sequence if k_ == 'card'))
+        print(f"  pacing: {len(_sched)} photos, {_sched[:1]}..{_sched[-5:]}s, "
+              f"~{(sum(_sched) + card_d * sum(1 for k_, _ in sequence if k_ == 'card')) / 60:.1f} min")
         i = -1
         for kind_, item in sequence:
             if kind_ == 'card':

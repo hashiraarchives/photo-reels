@@ -758,7 +758,9 @@ def build_description(metadata: Dict, title: str = "") -> str:
         "🎬 A Nostalgic Journey Through Classic Cinema\n"
         "Sit back, relax and let the music carry you through decades of movie history — "
         "old Hollywood nostalgia, retro photography and the timeless elegance of the "
-        "silver screen, in one cinematic slideshow."
+        "silver screen, in one cinematic slideshow. The pace slows as the film goes on, "
+        "and the last photographs linger, so it makes a gentle way to end the evening, "
+        "whether you are watching in America or Britain."
     )
 
     # A question right under the hook (still above the "...more" fold) turns a
