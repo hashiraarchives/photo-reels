@@ -583,6 +583,19 @@ if __name__ == "__main__":
                 snapshot_stats()
             except Exception as e:
                 logger.warning(f"Stats snapshot skipped: {e}")
+        # The compounding loop: per-video analytics (watch time, retention),
+        # then re-weight today's mix toward what has worked. Never blocks.
+        if getattr(config, 'TUNER_ENABLED', True):
+            try:
+                import analytics
+                analytics.collect()
+            except Exception as e:
+                logger.warning(f"Analytics collection skipped: {e}")
+            try:
+                import tuner
+                tuner.update()
+            except Exception as e:
+                logger.warning(f"Tuner skipped: {e}")
 
         ok_short = 0
         for i in range(n_shorts):

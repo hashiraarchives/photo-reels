@@ -228,6 +228,17 @@ def pick_focus_star(pools, min_rows: Optional[int] = None) -> Optional[str]:
         pass
 
     need = STAR_EPISODE_MIN_ROWS if min_rows is None else min_rows
+    # A star behind a recent breakout short gets the next episode if the pool
+    # can carry it (tuner.py follow-ups): one hit, then more of what worked.
+    try:
+        import tuner
+        follow = [f['star'].lower() for f in tuner.load().get('followups', []) if f.get('star')]
+    except Exception:
+        follow = []
+    for s in follow:
+        if s not in recent and len(_rows_for_star(pools, s)) >= need:
+            print(f"  STAR EPISODE: follow-up on breakout star {s}")
+            return ' '.join(w.capitalize() for w in s.split())
     counts = []
     all_counts = []
     for s in candidates:
@@ -323,7 +334,13 @@ def select_unused_images(count: int = config.IMAGES_PER_VIDEO,
     # half of all days, and star rotation already provides the day-to-day
     # variety the mixed days existed for.
     theme_key = None
-    if theme_episode and random.random() < float(getattr(config, 'LONGFORM_THEME_RATE', 0) or 0):
+    theme_rate = float(getattr(config, 'LONGFORM_THEME_RATE', 0) or 0)
+    try:
+        import tuner
+        theme_rate = float(tuner.load().get('long_theme_rate', theme_rate))
+    except Exception:
+        pass
+    if theme_episode and random.random() < theme_rate:
         theme_key = _take_theme_block(count, reuse_days, selected, picked)
     if getattr(config, 'STAR_EPISODES', True) and star_episode and not theme_key:
         star = pick_focus_star(pools, min_rows=star_min_rows)
@@ -1372,6 +1389,8 @@ def generate_personalized_voiceover(images: List[Dict], theme: str) -> Optional[
     Generate a personalized voiceover intro using Gemini + edge-tts.
     Falls back to pre-recorded intro voice if generation fails.
     """
+    if not getattr(config, 'GEMINI_VOICEOVER', False):
+        return get_intro_voice()
     try:
         from voiceover_generator import generate_voiceover
 
@@ -2269,7 +2288,7 @@ def generate_video(image_count: int = config.IMAGES_PER_VIDEO, theme: str = None
     # Step 2: Scrape descriptions
     print("\n[Step 2] Scraping descriptions from Wikimedia...")
     images = scrape_batch(images)
-    if not getattr(config, 'GEMINI_API_KEY', None) and getattr(config, 'LONGFORM_MONTAGE_CAPTIONS', True):
+    if not getattr(config, 'GEMINI_CAPTIONS', False) and getattr(config, 'LONGFORM_MONTAGE_CAPTIONS', True):
         _montage_long_captions(images)
 
     # Step 3: Create video

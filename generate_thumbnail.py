@@ -743,6 +743,15 @@ def _pick_split_pair(paths: List[str], names: Optional[List[str]] = None) -> Lis
             key = ' '.join(hint.lower().split()[:2])  # subject fingerprint
             figure = bool(_FIGURE_HINT.search(hint))
             intimate[p] = intimacy_score(p, hint) if getattr(config, 'THUMB_INTIMACY', False) else 0.0
+            if getattr(config, 'GEMINI_API_KEY', None):
+                # second pair of eyes: veto, and a better read of warmth
+                from gemini_generator import vision_check, vision_reject
+                res = vision_check(p)
+                if vision_reject(res):
+                    print(f"  thumbnail vision veto ({vision_reject(res)}): {os.path.basename(p)}")
+                    continue
+                if res:
+                    intimate[p] = max(intimate[p], res['warmth'] / 2.5)
             scored.append((_frame_score(p), p, key, figure))
         except Exception:
             continue
@@ -818,6 +827,10 @@ def generate_thumbnail_and_title(metadata_path: str) -> Dict:
     # Title/packaging via Gemini, fall back to the shared builder
     gemini_result = None
     try:
+        if not getattr(config, 'GEMINI_TITLES', False):
+            # 2026-10: titles come from the history/theme templates (they
+            # only promise what the video shows); Gemini is used for vision
+            raise RuntimeError("Gemini titles off (GEMINI_TITLES=False)")
         from gemini_generator import generate_with_gemini
         print("  Calling Gemini AI for title...")
         gemini_result = generate_with_gemini(metadata)

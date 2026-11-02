@@ -38,6 +38,17 @@ except ImportError:
 # OAuth 2.0 scopes for YouTube upload
 SCOPES = ['https://www.googleapis.com/auth/youtube.upload',
           'https://www.googleapis.com/auth/youtube']
+# 2026-10 compounding loop: a one-time re-consent adds analytics (watch time,
+# retention per video) and force-ssl (the channel's own first comment).
+ANALYTICS_SCOPE = 'https://www.googleapis.com/auth/yt-analytics.readonly'
+COMMENT_SCOPE = 'https://www.googleapis.com/auth/youtube.force-ssl'
+REAUTH_SCOPES = SCOPES + [ANALYTICS_SCOPE, COMMENT_SCOPE]
+_CREDENTIALS = None
+
+
+def granted_scopes() -> List[str]:
+    """Scopes the stored token actually carries ([] before the first auth)."""
+    return list(getattr(_CREDENTIALS, 'scopes', None) or [])
 
 
 def get_authenticated_service():
@@ -65,12 +76,13 @@ def get_authenticated_service():
             print("Error: No YOUTUBE_TOKEN_JSON env var and no token file on volume")
             return None
 
-    # Load existing token if available
+    # Load existing token if available. Scopes come from the token itself:
+    # forcing a scope list here would make the refresh request ask for any
+    # scope the token was never granted, and Google rejects the whole refresh
+    # (invalid_scope) -- which would stop uploads, not just analytics.
     if os.path.exists(config.YOUTUBE_TOKEN_FILE):
         try:
-            credentials = Credentials.from_authorized_user_file(
-                config.YOUTUBE_TOKEN_FILE, SCOPES
-            )
+            credentials = Credentials.from_authorized_user_file(config.YOUTUBE_TOKEN_FILE)
         except Exception as e:
             print(f"Error loading token: {e}")
 
@@ -104,7 +116,23 @@ def get_authenticated_service():
         with open(config.YOUTUBE_TOKEN_FILE, 'w') as token:
             token.write(credentials.to_json())
 
+    global _CREDENTIALS
+    _CREDENTIALS = credentials
     return build('youtube', 'v3', credentials=credentials)
+
+
+def get_analytics_service():
+    """YouTube Analytics API client, or None until the token carries the
+    yt-analytics.readonly scope (one-time re-consent: scripts/reauth_youtube.py)."""
+    if _CREDENTIALS is None:
+        get_authenticated_service()
+    if ANALYTICS_SCOPE not in granted_scopes():
+        return None
+    try:
+        return build('youtubeAnalytics', 'v2', credentials=_CREDENTIALS)
+    except Exception as e:
+        print(f"Analytics client unavailable: {e}")
+        return None
 
 
 # Curated set of classic Hollywood stars used to disambiguate person names from
@@ -1090,6 +1118,7 @@ def upload_from_metadata(metadata_path: str, privacy: str = None,
         thumbnail_path=thumbnail_path,
         star=(metadata.get('focus_star') or '').strip(),
         log_info={'format': 'history' if metadata.get('eras') else 'slideshow',
+                  'theme_key': metadata.get('theme_key') or '',
                   'eras': metadata.get('eras') or [],
                   'images': metadata.get('image_count')},
     )

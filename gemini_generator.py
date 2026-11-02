@@ -449,6 +449,81 @@ def score_image_with_vision(image_path: str) -> Optional[Dict]:
         return None
 
 
+# ---------------------------------------------------------------------------
+# VISION CHECK (2026-10): Gemini as a second pair of EYES, not a writer.
+# It only classifies real photos the pipeline already picked -- it never
+# generates or alters an image, and it doesn't write titles or captions unless
+# GEMINI_TITLES / GEMINI_CAPTIONS are turned on. Failures degrade open to the
+# free heuristics. Capped per run (GEMINI_VISION_MAX_PER_RUN).
+# ---------------------------------------------------------------------------
+_CHECK_PROMPT = """You check vintage photographs for a family-friendly classic-Hollywood YouTube channel.
+Look at THIS image and answer ONLY with JSON:
+{"real_photo": true/false,   // false for a magazine/newspaper page, poster, ad, drawing, title card, collage
+ "minor": true/false,        // true if anyone shown appears under 18
+ "unsafe": true/false,       // true for nudity, see-through or voyeuristic framing (upskirt, peeping)
+ "warmth": 0-10,             // how warm/intimate/joyful the real moment is: a kiss or embrace, dancing,
+                             // a beach day, laughter at a dinner table = high; a stiff studio headshot = low
+ "quality": 0-10,            // sharp, well-exposed, striking = high; damaged or illegible = low
+ "subject": "<few words>"}"""
+_CHECK_CACHE: Dict[str, Dict] = {}
+_CHECK_CALLS = 0
+
+
+def vision_check(image_path: str) -> Optional[Dict]:
+    """{'real_photo','minor','unsafe','warmth','quality','subject'} or None
+    (no key, over budget, or the call failed)."""
+    global _CHECK_CALLS
+    try:
+        from google import genai
+        from google.genai import types
+        import config
+    except ImportError:
+        return None
+    if not getattr(config, 'GEMINI_API_KEY', None) or not getattr(config, 'GEMINI_VISION_CHECK', True):
+        return None
+    if image_path in _CHECK_CACHE:
+        return _CHECK_CACHE[image_path]
+    if _CHECK_CALLS >= int(getattr(config, 'GEMINI_VISION_MAX_PER_RUN', 240)):
+        return None
+    try:
+        from PIL import Image
+        import io as _io
+        with Image.open(image_path) as im:          # downscale: fewer tokens, same judgement
+            im = im.convert('RGB')
+            im.thumbnail((768, 768))
+            buf = _io.BytesIO()
+            im.save(buf, 'JPEG', quality=85)
+        _CHECK_CALLS += 1
+        client = genai.Client(api_key=config.GEMINI_API_KEY)
+        resp = client.models.generate_content(
+            model=getattr(config, 'GEMINI_MODEL', 'gemini-3.5-flash-lite'),
+            contents=[types.Part.from_bytes(data=buf.getvalue(), mime_type='image/jpeg'), _CHECK_PROMPT])
+        txt = re.sub(r'^```(?:json)?\s*|\s*```$', '', (resp.text or '').strip())
+        txt = re.sub(r'//[^\n]*', '', txt)
+        out = json.loads(txt)
+        res = {'real_photo': bool(out.get('real_photo', True)), 'minor': bool(out.get('minor', False)),
+               'unsafe': bool(out.get('unsafe', False)), 'warmth': float(out.get('warmth', 0)),
+               'quality': float(out.get('quality', 5)), 'subject': str(out.get('subject', ''))[:60]}
+        _CHECK_CACHE[image_path] = res
+        return res
+    except Exception as e:
+        logger.warning(f"Vision check failed for {os.path.basename(image_path)}: {e}")
+        return None
+
+
+def vision_reject(res: Optional[Dict]) -> Optional[str]:
+    """Why a checked photo must not be used, or None."""
+    if not res:
+        return None
+    if res['minor']:
+        return 'minor'
+    if res['unsafe']:
+        return 'unsafe'
+    if not res['real_photo']:
+        return 'not a photo'
+    return None
+
+
 def scout_images(clips: List[Dict], keep: int, min_score: float = 6.0) -> List[Dict]:
     """
     Score every downloaded clip with vision and return the best `keep`.

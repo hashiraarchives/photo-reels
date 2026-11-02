@@ -40,6 +40,16 @@ GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 # output is a handful of thousands of tokens. Verified working against the live
 # API (2.5-flash-lite is gone; 3.5-flash-lite is current).
 GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-3.5-flash-lite')
+# 2026-10: with a key set, Gemini is a second pair of EYES only -- it checks
+# each candidate photo (real photo? minor? unsafe? how warm a moment?) and
+# never generates or alters an image. Writing stays factual and templated
+# unless these are switched on: a model-written caption can invent facts
+# this audience will catch.
+GEMINI_VISION_CHECK = True
+GEMINI_VISION_MAX_PER_RUN = 240   # photo checks per daily run (cost cap)
+GEMINI_TITLES = False             # Gemini-written long-form titles
+GEMINI_CAPTIONS = False           # Gemini-rewritten long-form captions
+GEMINI_VOICEOVER = False          # Gemini-scripted voice intro (pre-recorded intro otherwise)
 
 # === VISION IMAGE SCOUTING — OFF (cost) ===
 # Gemini vision genuinely solves the junk-image problem (measured on real pool
@@ -405,6 +415,8 @@ ERA_CARD_DURATION = 6              # seconds per chapter card
 LONGFORM_HISTORY_EVERY = 8         # a "That year, ..." line on about 1 photo in 8
 PLAYLIST_BACKFILL_PER_RUN = 4      # past videos added to empty star playlists per run (50 quota each)
 STATS_SNAPSHOT = True              # daily read-only stats of recent uploads -> seed_data/stats/
+TUNER_ENABLED = True               # analytics.collect() + tuner.update() before each daily run;
+                                   # leans the format mix toward winners (see tuner.py)
 
 
 def _first_font(cands):

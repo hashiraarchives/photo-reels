@@ -387,7 +387,7 @@ def scrape_batch(image_list: List[Dict], enhance: bool = True) -> List[Dict]:
     # SHORTS pass enhance=False: they show only the star's name, never a
     # per-photo caption, so the Gemini rewrite would be paid for and
     # then thrown away.
-    if enhance:
+    if enhance and getattr(config, 'GEMINI_CAPTIONS', False):
         image_list = enhance_captions_with_gemini(image_list)
 
     return image_list

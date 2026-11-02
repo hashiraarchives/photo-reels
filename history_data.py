@@ -383,7 +383,22 @@ def pick_theme(available: Dict[str, int], need: int, recent: List[str],
     ok = [t for t in THEMES if available.get(t['key'], 0) >= need]
     fresh = [t for t in ok if t['key'] not in recent[-4:]]
     pool = fresh or ok
-    return rng.choice(pool) if pool else None
+    if not pool:
+        return None
+    # The tuner (tuner.py) weights themes by how they have performed; a
+    # theme behind a recent breakout gets a double share for a week.
+    try:
+        import tuner
+        t = tuner.load()
+        w = t.get('short_theme_weights') or {}
+        boost = {f.get('theme') for f in t.get('followups', []) if f.get('theme')}
+    except Exception:
+        w, boost = {}, set()
+    if w:
+        weights = [w.get(x['key'], min(w.values()) if w else 1.0) * (2.0 if x['key'] in boost else 1.0)
+                   for x in pool]
+        return rng.choices(pool, weights=weights, k=1)[0]
+    return rng.choice(pool)
 
 
 def eras_in(years: List[int]) -> List[Dict]:

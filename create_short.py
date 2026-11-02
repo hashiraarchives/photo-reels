@@ -423,9 +423,25 @@ def generate_short(theme: Optional[str] = None) -> Optional[str]:
         over = max(over, 2.4)
     roll = random.random()
     star_rate = float(getattr(config, 'SHORT_STAR_RATE', 0.3))
+    theme_rate = float(getattr(config, 'SHORT_THEME_RATE', 0.0))
+    # The compounding loop (tuner.py): tomorrow's mix leans toward the kinds
+    # of short that have done best at the same age; a breakout star gets a
+    # follow-up. Config rates apply until the tuner has measured enough.
+    try:
+        import tuner
+        tune = tuner.load()
+    except Exception:
+        tune = {}
+    if history and tune.get('short_kind_weights'):
+        kw = tune['short_kind_weights']
+        star_rate, theme_rate = kw.get('star', star_rate), kw.get('theme', theme_rate)
+        if any(f.get('star') for f in tune.get('followups', [])):
+            star_rate = max(star_rate, 0.5)
+        print(f"  tuned mix: star {star_rate:.2f} | theme {theme_rate:.2f} | "
+              f"timeline {max(0.0, 1 - star_rate - theme_rate):.2f}")
     want_star = roll < star_rate
     story = None
-    if history and not want_star and roll < star_rate + float(getattr(config, 'SHORT_THEME_RATE', 0.0)):
+    if history and not want_star and roll < star_rate + theme_rate:
         story = _pick_short_theme(reuse, need=int(keep * 2.5))
     sel = dict(star_share=1.0, star_min_rows=star_min, reuse_days=reuse,
                for_shorts=True, star_episode=want_star)
@@ -498,6 +514,27 @@ def generate_short(theme: Optional[str] = None) -> Optional[str]:
                         c['heur_score'] = 0.5
                     ranked.append(c)
                 ranked.sort(key=lambda c: c.get('heur_score', 0.0), reverse=True)
+                # Gemini as a second pair of eyes (only with GEMINI_API_KEY):
+                # drops magazine pages, minors and anything unsafe the free
+                # heuristics missed, and notes how warm each moment is.
+                if getattr(config, 'GEMINI_API_KEY', None) and getattr(config, 'GEMINI_VISION_CHECK', True):
+                    try:
+                        from gemini_generator import vision_check, vision_reject
+                        checked = []
+                        for c in ranked[:keep + 8]:
+                            res = vision_check(c.get('orig') or c.get('path'))
+                            why = vision_reject(res)
+                            if why:
+                                print(f"    vision veto ({why}): {(c.get('filename') or '')[:40]}")
+                                continue
+                            if res:
+                                c['_ai_warm'] = res['warmth']
+                                c['heur_score'] = c.get('heur_score', 0.0) + res['quality'] / 20.0
+                            checked.append(c)
+                        ranked = sorted(checked, key=lambda c: c.get('heur_score', 0.0),
+                                        reverse=True) + ranked[keep + 8:]
+                    except Exception as e:
+                        print(f"  vision check unavailable ({e})")
                 if focus_star:
                     # Star photos first. Ranking on image quality alone let
                     # other people's sharper photos crowd the star out, the
@@ -1021,7 +1058,8 @@ def _arrange_history(pool: List[dict], kind: str, focus_star: str,
             for c in cands:
                 src = c.get('orig') or c.get('path')
                 hint = ' '.join(str(c.get(k) or '') for k in ('filename', 'caption', 'description'))
-                c['_warm'] = intimacy_score(src, hint) if src else 0.0
+                c['_warm'] = max(intimacy_score(src, hint) if src else 0.0,
+                                 c.get('_ai_warm', 0.0) / 2.5)
         except Exception:
             pass
 
