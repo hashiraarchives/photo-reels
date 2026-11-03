@@ -1,63 +1,46 @@
 {
- "updated": "2026-11-02",
- "n_measured": 35,
+ "updated": "2026-11-03",
+ "n_measured": 49,
  "median_first_days_views": {
-  "short": 377,
-  "long": 93.5
+  "short": 623.5,
+  "long": 98
  },
  "median_retention": {
   "short": 64.1,
   "long": 11.05
  },
  "short_kind_weights": {
-  "star": 0.109,
-  "theme": 0.328,
-  "timeline": 0.563
+  "star": 0.127,
+  "theme": 0.469,
+  "timeline": 0.404
  },
  "short_theme_weights": {
-  "talkies": 0.11,
-  "silent": 0.099,
-  "golden": 0.178,
-  "war": 0.093,
-  "fifties": 0.078,
-  "nicknames": 0.099,
-  "oscars": 0.123,
-  "couples": 0.143,
-  "beach": 0.077
+  "talkies": 0.096,
+  "silent": 0.147,
+  "golden": 0.174,
+  "war": 0.107,
+  "fifties": 0.076,
+  "nicknames": 0.14,
+  "oscars": 0.085,
+  "couples": 0.098,
+  "beach": 0.076
  },
- "long_theme_rate": 0.38,
- "followups": [
-  {
-   "id": "DD6DW2Dt3bs",
-   "title": "Hollywood's Leading Ladies, Decade by Decade",
-   "views": 1166,
-   "star": "",
-   "theme": "",
-   "kind": "timeline",
-   "until": "2026-11-02"
-  },
-  {
-   "id": "m29ewuhKtqU",
-   "title": "Golden Age Actresses Captured in Rare Moments",
-   "views": 1176,
-   "star": "",
-   "theme": "",
-   "kind": "timeline",
-   "until": "2026-11-04"
-  }
- ],
+ "long_theme_rate": 0.3,
+ "followups": [],
  "report": [
-  "short:theme:golden           n=1   score=+0.26",
-  "short:theme:couples          n=2   score=+0.16",
-  "short:theme:oscars           n=2   score=+0.10",
-  "short:timeline               n=14  score=+0.05",
-  "short:theme:talkies          n=2   score=+0.05",
-  "long:mixed                   n=6   score=+0.04",
-  "short:theme                  n=11  score=-0.01",
-  "short:theme:war              n=1   score=-0.03",
-  "short:theme:fifties          n=1   score=-0.11",
-  "long:star                    n=2   score=-0.16",
-  "short:theme:beach            n=2   score=-0.45",
-  "short:star                   n=2   score=-0.51"
+  "short:theme:golden           n=2   score=+0.22",
+  "long:star                    n=5   score=+0.20",
+  "short:theme:silent           n=1   score=+0.15",
+  "short:theme:nicknames        n=1   score=+0.12",
+  "long:mixed                   n=6   score=+0.01",
+  "short:theme:war              n=2   score=+0.00",
+  "short:theme:couples          n=2   score=-0.04",
+  "short:theme:talkies          n=3   score=-0.05",
+  "short:theme:oscars           n=2   score=-0.10",
+  "short:theme                  n=17  score=-0.12",
+  "short:timeline               n=19  score=-0.19",
+  "short:theme:fifties          n=1   score=-0.23",
+  "short:theme:beach            n=3   score=-0.45",
+  "short:star                   n=2   score=-0.71"
  ]
 }

@@ -46,21 +46,10 @@
   "You should be kissed, and often, and by someone who knows how.",
   "If I'd been a ranch, they would've named me the Bar Nothing.",
   "We didn't need dialogue. We had faces!",
-  "Insanity runs in my family. It practically gallops."
+  "Insanity runs in my family. It practically gallops.",
+  "Here's looking at you, kid."
  ],
  "events": [
-  "Mickey Mouse debuted in Steamboat Willie",
-  "Dracula and Frankenstein started Universal's monster craze",
-  "Citizen Kane premiered",
-  "I Love Lucy debuted on CBS",
-  "Greta Garbo spoke her first lines on screen in Anna Christie",
-  "the Hollywoodland sign went up in the hills above Los Angeles",
-  "Apollo 11 landed on the Moon",
-  "Mickey Mouse debuted in Steamboat Willie",
-  "Ben-Hur became the most expensive silent film ever made",
-  "Grace Kelly starred in Rear Window and The Country Girl",
-  "Citizen Kane premiered",
-  "the Production Code began to be strictly enforced",
   "Becky Sharp became the first feature in three-strip Technicolor",
   "Chaplin said farewell to the Little Tramp in Modern Times",
   "Casablanca premiered and the Hollywood Canteen opened its doors",
@@ -108,13 +97,21 @@
   "the rating system replaced the Production Code",
   "Miracle on 34th Street premiered",
   "The Sound of Music became a box-office phenomenon",
-  "Mickey Mouse debuted in Steamboat Willie"
+  "Mickey Mouse debuted in Steamboat Willie",
+  "Casablanca premiered and the Hollywood Canteen opened its doors",
+  "Hitchcock's Vertigo premiered",
+  "the first Academy Awards were presented in Hollywood",
+  "Elvis Presley starred in Jailhouse Rock",
+  "the first Academy Awards were presented in Hollywood",
+  "Grand Hotel brought an all-star cast to the screen",
+  "the Production Code began to be strictly enforced",
+  "Becky Sharp became the first feature in three-strip Technicolor",
+  "Disney's Snow White became America's first full-length animated feature",
+  "Ben-Hur became the most expensive silent film ever made",
+  "Casablanca premiered and the Hollywood Canteen opened its doors",
+  "Pickford, Chaplin, Fairbanks and Griffith founded United Artists"
  ],
  "prompts": [
-  "Who did we miss?",
-  "Remember these faces?",
-  "Which decade was the best?",
-  "Best year for movies?",
   "Who did Dad have a pinup of?",
   "Could you watch a silent film?",
   "Which decade was the best?",
@@ -130,7 +127,11 @@
   "Who deserved more Oscars?",
   "Which nickname fits best?",
   "Remember these faces?",
-  "Who did we miss?"
+  "Who did we miss?",
+  "Which decade was the best?",
+  "Remember these faces?",
+  "Best year for movies?",
+  "Ever been to a boardwalk?"
  ],
  "themes": [
   "beach",
@@ -156,7 +157,9 @@
   "couples",
   "silent",
   "oscars",
-  "nicknames"
+  "nicknames",
+  "golden",
+  "beach"
  ],
  "lf_themes": [
   "beach",
