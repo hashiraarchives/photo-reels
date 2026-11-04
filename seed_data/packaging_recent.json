@@ -50,18 +50,6 @@
   "Here's looking at you, kid."
  ],
  "events": [
-  "Becky Sharp became the first feature in three-strip Technicolor",
-  "Chaplin said farewell to the Little Tramp in Modern Times",
-  "Casablanca premiered and the Hollywood Canteen opened its doors",
-  "Betty Grable posed for the most famous pinup photo of the war",
-  "the war ended and Hollywood's stars came home",
-  "Rudolph Valentino became a sensation in The Sheik",
-  "Don Juan premiered with a synchronized score and sound effects",
-  "Ben-Hur became the most expensive silent film ever made",
-  "Elvis Presley starred in Jailhouse Rock",
-  "Mickey Mouse debuted in Steamboat Willie",
-  "Ben-Hur and Some Like It Hot both premiered",
-  "Greta Garbo spoke her first lines on screen in Anna Christie",
   "It's a Wonderful Life premiered",
   "Hitchcock's Psycho shocked audiences",
   "Clara Bow became the 'It Girl' in It",
@@ -109,13 +97,21 @@
   "Disney's Snow White became America's first full-length animated feature",
   "Ben-Hur became the most expensive silent film ever made",
   "Casablanca premiered and the Hollywood Canteen opened its doors",
-  "Pickford, Chaplin, Fairbanks and Griffith founded United Artists"
+  "Pickford, Chaplin, Fairbanks and Griffith founded United Artists",
+  "Citizen Kane premiered",
+  "All About Eve and Sunset Boulevard both premiered",
+  "Disneyland opened in Anaheim, California",
+  "CinemaScope debuted with The Robe",
+  "My Fair Lady premiered",
+  "Becky Sharp became the first feature in three-strip Technicolor",
+  "Clara Bow became the 'It Girl' in It",
+  "The Adventures of Robin Hood dazzled audiences in Technicolor",
+  "Breakfast at Tiffany's premiered",
+  "American movie attendance hit its postwar peak",
+  "Hitchcock's Vertigo premiered",
+  "Ben-Hur became the most expensive silent film ever made"
  ],
  "prompts": [
-  "Who did Dad have a pinup of?",
-  "Could you watch a silent film?",
-  "Which decade was the best?",
-  "Which nickname fits best?",
   "Silent or talkie?",
   "Which decade was the best?",
   "Ever been to a boardwalk?",
@@ -131,7 +127,11 @@
   "Which decade was the best?",
   "Remember these faces?",
   "Best year for movies?",
-  "Ever been to a boardwalk?"
+  "Ever been to a boardwalk?",
+  "Which era would you visit?",
+  "Who did we miss?",
+  "Remember these faces?",
+  "Best screen couple ever?"
  ],
  "themes": [
   "beach",
@@ -159,7 +159,8 @@
   "oscars",
   "nicknames",
   "golden",
-  "beach"
+  "beach",
+  "couples"
  ],
  "lf_themes": [
   "beach",
