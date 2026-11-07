@@ -47,18 +47,11 @@
   "If I'd been a ranch, they would've named me the Bar Nothing.",
   "We didn't need dialogue. We had faces!",
   "Insanity runs in my family. It practically gallops.",
-  "Here's looking at you, kid."
+  "Here's looking at you, kid.",
+  "Rome. By all means, Rome.",
+  "Nature, Mr. Allnut, is what we are put in this world to rise above."
  ],
  "events": [
-  "Clara Bow became the 'It Girl' in It",
-  "Rudolph Valentino became a sensation in The Sheik",
-  "Ben-Hur became the most expensive silent film ever made",
-  "Don Juan premiered with a synchronized score and sound effects",
-  "Grace Kelly starred in Rear Window and The Country Girl",
-  "Clara Bow became the 'It Girl' in It",
-  "the first Academy Awards were presented in Hollywood",
-  "Singin' in the Rain premiered",
-  "the first Academy Awards were presented in Hollywood",
   "Breakfast at Tiffany's premiered",
   "Mickey Mouse debuted in Steamboat Willie",
   "Going My Way and Double Indemnity filled theaters",
@@ -109,12 +102,18 @@
   "The Adventures of Robin Hood dazzled audiences in Technicolor",
   "All About Eve and Sunset Boulevard both premiered",
   "Becky Sharp became the first feature in three-strip Technicolor",
-  "the first Academy Awards were presented in Hollywood"
+  "the first Academy Awards were presented in Hollywood",
+  "CinemaScope debuted with The Robe",
+  "All About Eve and Sunset Boulevard both premiered",
+  "Grace Kelly married Prince Rainier and became Princess of Monaco",
+  "American movie attendance hit its postwar peak",
+  "Breakfast at Tiffany's premiered",
+  "Grace Kelly starred in Rear Window and The Country Girl",
+  "Citizen Kane premiered",
+  "Betty Grable posed for the most famous pinup photo of the war",
+  "the war ended and Hollywood's stars came home"
  ],
  "prompts": [
-  "Could you watch a silent film?",
-  "Which era would you visit?",
-  "Who did we miss?",
   "Which decade was the best?",
   "Who deserved more Oscars?",
   "Which nickname fits best?",
@@ -131,10 +130,12 @@
   "Which decade was the best?",
   "Which era would you visit?",
   "Remember these faces?",
-  "Who did we miss?"
+  "Who did we miss?",
+  "Drive-in or movie palace?",
+  "Which decade was the best?",
+  "Who did Dad have a pinup of?"
  ],
  "themes": [
-  "beach",
   "oscars",
   "couples",
   "fifties",
@@ -161,7 +162,10 @@
   "golden",
   "beach",
   "couples",
-  "silent"
+  "silent",
+  "fifties",
+  "nicknames",
+  "war"
  ],
  "lf_themes": [
   "beach",
