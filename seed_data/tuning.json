@@ -1,18 +1,18 @@
 {
- "updated": "2026-11-07",
- "n_measured": 66,
+ "updated": "2026-11-08",
+ "n_measured": 70,
  "median_first_days_views": {
-  "short": 999,
-  "long": 115
+  "short": 1007.5,
+  "long": 106.5
  },
  "median_retention": {
   "short": 64.1,
   "long": 11.05
  },
  "short_kind_weights": {
-  "star": 0.148,
-  "theme": 0.441,
-  "timeline": 0.411
+  "star": 0.143,
+  "theme": 0.422,
+  "timeline": 0.435
  },
  "short_theme_weights": {
   "talkies": 0.081,
@@ -25,22 +25,22 @@
   "couples": 0.092,
   "beach": 0.077
  },
- "long_theme_rate": 0.34,
+ "long_theme_rate": 0.32,
  "followups": [],
  "report": [
-  "long:star                    n=9   score=+0.13",
+  "long:star                    n=10  score=+0.15",
   "short:theme:golden           n=3   score=+0.05",
   "short:theme:silent           n=2   score=+0.02",
   "short:theme:nicknames        n=2   score=+0.01",
-  "long:mixed                   n=6   score=-0.10",
+  "long:mixed                   n=6   score=-0.05",
   "short:theme:war              n=2   score=-0.19",
   "short:theme:couples          n=2   score=-0.23",
   "short:theme:oscars           n=3   score=-0.24",
-  "short:theme:talkies          n=3   score=-0.28",
+  "short:theme:talkies          n=3   score=-0.29",
   "short:theme:fifties          n=1   score=-0.35",
-  "short:theme                  n=22  score=-0.40",
-  "short:timeline               n=27  score=-0.44",
-  "short:theme:beach            n=4   score=-0.57",
+  "short:timeline               n=30  score=-0.40",
+  "short:theme                  n=22  score=-0.41",
+  "short:theme:beach            n=4   score=-0.58",
   "short:star                   n=2   score=-0.90"
  ]
 }
