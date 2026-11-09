@@ -53,18 +53,6 @@
   "What a dump!"
  ],
  "events": [
-  "Miracle on 34th Street premiered",
-  "The Sound of Music became a box-office phenomenon",
-  "Mickey Mouse debuted in Steamboat Willie",
-  "Casablanca premiered and the Hollywood Canteen opened its doors",
-  "Hitchcock's Vertigo premiered",
-  "the first Academy Awards were presented in Hollywood",
-  "Elvis Presley starred in Jailhouse Rock",
-  "the first Academy Awards were presented in Hollywood",
-  "Grand Hotel brought an all-star cast to the screen",
-  "the Production Code began to be strictly enforced",
-  "Becky Sharp became the first feature in three-strip Technicolor",
-  "Disney's Snow White became America's first full-length animated feature",
   "Ben-Hur became the most expensive silent film ever made",
   "Casablanca premiered and the Hollywood Canteen opened its doors",
   "Pickford, Chaplin, Fairbanks and Griffith founded United Artists",
@@ -112,13 +100,21 @@
   "Chaplin said farewell to the Little Tramp in Modern Times",
   "Casablanca premiered and the Hollywood Canteen opened its doors",
   "It's a Wonderful Life premiered",
-  "CinemaScope debuted with The Robe"
+  "CinemaScope debuted with The Robe",
+  "Disney's Snow White became America's first full-length animated feature",
+  "Ben-Hur became the most expensive silent film ever made",
+  "Clara Bow became the 'It Girl' in It",
+  "Rudolph Valentino became a sensation in The Sheik",
+  "Don Juan premiered with a synchronized score and sound effects",
+  "Ben-Hur became the most expensive silent film ever made",
+  "Greta Garbo spoke her first lines on screen in Anna Christie",
+  "television's first Emmy Awards were presented",
+  "Pickford, Chaplin, Fairbanks and Griffith founded United Artists",
+  "Citizen Kane premiered",
+  "I Love Lucy debuted on CBS",
+  "Hitchcock's Psycho shocked audiences"
  ],
  "prompts": [
-  "Who did we miss?",
-  "Which decade was the best?",
-  "Remember these faces?",
-  "Best year for movies?",
   "Ever been to a boardwalk?",
   "Which era would you visit?",
   "Who did we miss?",
@@ -134,10 +130,13 @@
   "Remember these faces?",
   "Which decade was the best?",
   "Best year for movies?",
-  "Which era would you visit?"
+  "Which era would you visit?",
+  "Who did we miss?",
+  "Could you watch a silent film?",
+  "Which era would you visit?",
+  "Which decade was the best?"
  ],
  "themes": [
-  "couples",
   "fifties",
   "silent",
   "war",
@@ -166,7 +165,8 @@
   "fifties",
   "nicknames",
   "war",
-  "golden"
+  "golden",
+  "silent"
  ],
  "lf_themes": [
   "beach",
