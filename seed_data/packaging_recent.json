@@ -50,18 +50,10 @@
   "Here's looking at you, kid.",
   "Rome. By all means, Rome.",
   "Nature, Mr. Allnut, is what we are put in this world to rise above.",
-  "What a dump!"
+  "What a dump!",
+  "Play it, Sam. Play 'As Time Goes By.'"
  ],
  "events": [
-  "Ben-Hur became the most expensive silent film ever made",
-  "Casablanca premiered and the Hollywood Canteen opened its doors",
-  "Pickford, Chaplin, Fairbanks and Griffith founded United Artists",
-  "Citizen Kane premiered",
-  "All About Eve and Sunset Boulevard both premiered",
-  "Disneyland opened in Anaheim, California",
-  "CinemaScope debuted with The Robe",
-  "My Fair Lady premiered",
-  "Becky Sharp became the first feature in three-strip Technicolor",
   "Clara Bow became the 'It Girl' in It",
   "The Adventures of Robin Hood dazzled audiences in Technicolor",
   "Breakfast at Tiffany's premiered",
@@ -112,12 +104,18 @@
   "Pickford, Chaplin, Fairbanks and Griffith founded United Artists",
   "Citizen Kane premiered",
   "I Love Lucy debuted on CBS",
-  "Hitchcock's Psycho shocked audiences"
+  "Hitchcock's Psycho shocked audiences",
+  "Betty Grable posed for the most famous pinup photo of the war",
+  "Don Juan premiered with a synchronized score and sound effects",
+  "Hitchcock's Psycho shocked audiences",
+  "Grace Kelly starred in Rear Window and The Country Girl",
+  "Don Juan premiered with a synchronized score and sound effects",
+  "Dr. No introduced James Bond to movie audiences",
+  "Gone with the Wind and The Wizard of Oz both premiered",
+  "Breakfast at Tiffany's premiered",
+  "Grace Kelly starred in Rear Window and The Country Girl"
  ],
  "prompts": [
-  "Ever been to a boardwalk?",
-  "Which era would you visit?",
-  "Who did we miss?",
   "Remember these faces?",
   "Best screen couple ever?",
   "Which decade was the best?",
@@ -134,6 +132,9 @@
   "Who did we miss?",
   "Could you watch a silent film?",
   "Which era would you visit?",
+  "Which decade was the best?",
+  "Remember these faces?",
+  "Who did we miss?",
   "Which decade was the best?"
  ],
  "themes": [
