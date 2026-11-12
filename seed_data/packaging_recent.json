@@ -54,12 +54,6 @@
   "Play it, Sam. Play 'As Time Goes By.'"
  ],
  "events": [
-  "The Jazz Singer brought spoken dialogue to the movies",
-  "the Hollywoodland sign went up in the hills above Los Angeles",
-  "The Adventures of Robin Hood dazzled audiences in Technicolor",
-  "All About Eve and Sunset Boulevard both premiered",
-  "Becky Sharp became the first feature in three-strip Technicolor",
-  "the first Academy Awards were presented in Hollywood",
   "CinemaScope debuted with The Robe",
   "All About Eve and Sunset Boulevard both premiered",
   "Grace Kelly married Prince Rainier and became Princess of Monaco",
@@ -113,11 +107,15 @@
   "Breakfast at Tiffany's premiered",
   "Ben-Hur became the most expensive silent film ever made",
   "Citizen Kane premiered",
-  "The Sound of Music became a box-office phenomenon"
+  "The Sound of Music became a box-office phenomenon",
+  "Don Juan premiered with a synchronized score and sound effects",
+  "My Fair Lady premiered",
+  "television's first Emmy Awards were presented",
+  "the Hollywoodland sign went up in the hills above Los Angeles",
+  "The Jazz Singer brought spoken dialogue to the movies",
+  "Casablanca premiered and the Hollywood Canteen opened its doors"
  ],
  "prompts": [
-  "Remember these faces?",
-  "Who did we miss?",
   "Drive-in or movie palace?",
   "Which decade was the best?",
   "Who did Dad have a pinup of?",
@@ -135,10 +133,11 @@
   "Remember these faces?",
   "Best screen couple ever?",
   "Which decade was the best?",
-  "Who deserved more Oscars?"
+  "Who deserved more Oscars?",
+  "Who did we miss?",
+  "Which era would you visit?"
  ],
  "themes": [
-  "war",
   "oscars",
   "talkies",
   "golden",
@@ -167,7 +166,8 @@
   "golden",
   "silent",
   "couples",
-  "oscars"
+  "oscars",
+  "nicknames"
  ],
  "lf_themes": [
   "beach",
