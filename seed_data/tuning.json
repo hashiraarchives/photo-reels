@@ -1,45 +1,45 @@
 {
- "updated": "2026-11-12",
- "n_measured": 86,
+ "updated": "2026-11-13",
+ "n_measured": 91,
  "median_first_days_views": {
-  "short": 1009.5,
-  "long": 100.5
+  "short": 1008.5,
+  "long": 103
  },
  "median_retention": {
   "short": 64.1,
   "long": 11.05
  },
  "short_kind_weights": {
-  "star": 0.148,
-  "theme": 0.427,
-  "timeline": 0.425
+  "star": 0.145,
+  "theme": 0.409,
+  "timeline": 0.446
  },
  "short_theme_weights": {
-  "talkies": 0.079,
-  "silent": 0.154,
-  "golden": 0.175,
-  "war": 0.095,
-  "fifties": 0.083,
-  "nicknames": 0.152,
-  "oscars": 0.087,
-  "couples": 0.098,
+  "talkies": 0.082,
+  "silent": 0.125,
+  "golden": 0.182,
+  "war": 0.098,
+  "fifties": 0.086,
+  "nicknames": 0.158,
+  "oscars": 0.09,
+  "couples": 0.101,
   "beach": 0.077
  },
  "long_theme_rate": 0.32,
  "followups": [],
  "report": [
-  "long:star                    n=13  score=+0.11",
+  "long:star                    n=13  score=+0.09",
   "short:theme:golden           n=4   score=+0.07",
-  "short:theme:silent           n=2   score=+0.01",
+  "long:mixed                   n=8   score=+0.02",
   "short:theme:nicknames        n=2   score=+0.01",
-  "long:mixed                   n=7   score=+0.00",
+  "short:theme:silent           n=3   score=-0.10",
   "short:theme:couples          n=3   score=-0.19",
   "short:theme:war              n=3   score=-0.20",
   "short:theme:oscars           n=3   score=-0.24",
   "short:theme:fifties          n=2   score=-0.26",
   "short:theme:talkies          n=3   score=-0.29",
-  "short:theme                  n=26  score=-0.36",
-  "short:timeline               n=37  score=-0.36",
+  "short:timeline               n=40  score=-0.33",
+  "short:theme                  n=27  score=-0.36",
   "short:theme:beach            n=4   score=-0.58",
   "short:star                   n=3   score=-0.83"
  ]
