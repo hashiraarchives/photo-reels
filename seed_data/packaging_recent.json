@@ -52,18 +52,10 @@
   "Nature, Mr. Allnut, is what we are put in this world to rise above.",
   "What a dump!",
   "Play it, Sam. Play 'As Time Goes By.'",
-  "There's no place like home."
+  "There's no place like home.",
+  "The time to make up your mind about people is never."
  ],
  "events": [
-  "Miracle on 34th Street premiered",
-  "Clara Bow became the 'It Girl' in It",
-  "The Philadelphia Story paired Katharine Hepburn, Cary Grant and James Stewart",
-  "Dr. No introduced James Bond to movie audiences",
-  "All About Eve and Sunset Boulevard both premiered",
-  "the Production Code began to be strictly enforced",
-  "Becky Sharp became the first feature in three-strip Technicolor",
-  "Chaplin said farewell to the Little Tramp in Modern Times",
-  "Casablanca premiered and the Hollywood Canteen opened its doors",
   "It's a Wonderful Life premiered",
   "CinemaScope debuted with The Robe",
   "Disney's Snow White became America's first full-length animated feature",
@@ -114,12 +106,18 @@
   "Becky Sharp became the first feature in three-strip Technicolor",
   "Disney's Snow White became America's first full-length animated feature",
   "Gone with the Wind and The Wizard of Oz both premiered",
-  "Grand Hotel brought an all-star cast to the screen"
+  "Grand Hotel brought an all-star cast to the screen",
+  "Don Juan premiered with a synchronized score and sound effects",
+  "Clara Bow became the 'It Girl' in It",
+  "Mickey Mouse debuted in Steamboat Willie",
+  "Ben-Hur became the most expensive silent film ever made",
+  "the first Academy Awards were presented in Hollywood",
+  "Ben-Hur and Some Like It Hot both premiered",
+  "Citizen Kane premiered",
+  "Betty Grable posed for the most famous pinup photo of the war",
+  "Going My Way and Double Indemnity filled theaters"
  ],
  "prompts": [
-  "Which decade was the best?",
-  "Best year for movies?",
-  "Which era would you visit?",
   "Who did we miss?",
   "Could you watch a silent film?",
   "Which era would you visit?",
@@ -136,12 +134,12 @@
   "Which decade was the best?",
   "Who did we miss?",
   "Best year for movies?",
-  "Ever been to a boardwalk?"
+  "Ever been to a boardwalk?",
+  "Silent or talkie?",
+  "Remember these faces?",
+  "Who did Dad have a pinup of?"
  ],
  "themes": [
-  "golden",
-  "beach",
-  "silent",
   "nicknames",
   "couples",
   "talkies",
@@ -168,7 +166,10 @@
   "oscars",
   "nicknames",
   "golden",
-  "beach"
+  "beach",
+  "talkies",
+  "war",
+  "nicknames"
  ],
  "lf_themes": [
   "beach",
