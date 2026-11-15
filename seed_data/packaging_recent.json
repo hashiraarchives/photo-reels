@@ -56,18 +56,6 @@
   "The time to make up your mind about people is never."
  ],
  "events": [
-  "It's a Wonderful Life premiered",
-  "CinemaScope debuted with The Robe",
-  "Disney's Snow White became America's first full-length animated feature",
-  "Ben-Hur became the most expensive silent film ever made",
-  "Clara Bow became the 'It Girl' in It",
-  "Rudolph Valentino became a sensation in The Sheik",
-  "Don Juan premiered with a synchronized score and sound effects",
-  "Ben-Hur became the most expensive silent film ever made",
-  "Greta Garbo spoke her first lines on screen in Anna Christie",
-  "television's first Emmy Awards were presented",
-  "Pickford, Chaplin, Fairbanks and Griffith founded United Artists",
-  "Citizen Kane premiered",
   "I Love Lucy debuted on CBS",
   "Hitchcock's Psycho shocked audiences",
   "Betty Grable posed for the most famous pinup photo of the war",
@@ -115,13 +103,21 @@
   "Ben-Hur and Some Like It Hot both premiered",
   "Citizen Kane premiered",
   "Betty Grable posed for the most famous pinup photo of the war",
-  "Going My Way and Double Indemnity filled theaters"
+  "Going My Way and Double Indemnity filled theaters",
+  "the war ended and Hollywood's stars came home",
+  "Hitchcock's Psycho shocked audiences",
+  "the Paramount ruling began breaking up the studios' theater chains",
+  "Clara Bow became the 'It Girl' in It",
+  "Dracula and Frankenstein started Universal's monster craze",
+  "Don Juan premiered with a synchronized score and sound effects",
+  "Rudolph Valentino became a sensation in The Sheik",
+  "Becky Sharp became the first feature in three-strip Technicolor",
+  "American movie attendance hit its postwar peak",
+  "The Philadelphia Story paired Katharine Hepburn, Cary Grant and James Stewart",
+  "It's a Wonderful Life premiered",
+  "Breakfast at Tiffany's premiered"
  ],
  "prompts": [
-  "Who did we miss?",
-  "Could you watch a silent film?",
-  "Which era would you visit?",
-  "Which decade was the best?",
   "Remember these faces?",
   "Who did we miss?",
   "Which decade was the best?",
@@ -137,7 +133,11 @@
   "Ever been to a boardwalk?",
   "Silent or talkie?",
   "Remember these faces?",
-  "Who did Dad have a pinup of?"
+  "Who did Dad have a pinup of?",
+  "Which era would you visit?",
+  "Remember these faces?",
+  "Which decade was the best?",
+  "Who did we miss?"
  ],
  "themes": [
   "nicknames",

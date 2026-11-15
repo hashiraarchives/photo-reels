@@ -1,46 +1,46 @@
 {
- "updated": "2026-11-14",
- "n_measured": 95,
+ "updated": "2026-11-15",
+ "n_measured": 100,
  "median_first_days_views": {
-  "short": 1008,
-  "long": 100.5
+  "short": 1004,
+  "long": 98
  },
  "median_retention": {
   "short": 64.1,
   "long": 11.05
  },
  "short_kind_weights": {
-  "star": 0.142,
-  "theme": 0.4,
-  "timeline": 0.458
+  "star": 0.152,
+  "theme": 0.394,
+  "timeline": 0.453
  },
  "short_theme_weights": {
-  "talkies": 0.082,
-  "silent": 0.125,
-  "golden": 0.182,
-  "war": 0.098,
-  "fifties": 0.086,
-  "nicknames": 0.158,
-  "oscars": 0.09,
-  "couples": 0.101,
+  "talkies": 0.085,
+  "silent": 0.13,
+  "golden": 0.189,
+  "war": 0.102,
+  "fifties": 0.09,
+  "nicknames": 0.164,
+  "oscars": 0.077,
+  "couples": 0.087,
   "beach": 0.077
  },
- "long_theme_rate": 0.32,
+ "long_theme_rate": 0.31,
  "followups": [],
  "report": [
-  "long:star                    n=13  score=+0.11",
-  "short:theme:golden           n=4   score=+0.07",
+  "long:star                    n=13  score=+0.13",
+  "short:theme:golden           n=4   score=+0.08",
   "short:theme:nicknames        n=2   score=+0.01",
-  "long:mixed                   n=9   score=+0.01",
-  "short:theme:silent           n=3   score=-0.10",
-  "short:theme:couples          n=3   score=-0.19",
+  "long:mixed                   n=10  score=+0.01",
+  "short:theme:silent           n=3   score=-0.09",
   "short:theme:war              n=3   score=-0.20",
-  "short:theme:oscars           n=3   score=-0.24",
   "short:theme:fifties          n=2   score=-0.26",
-  "short:theme:talkies          n=3   score=-0.29",
-  "short:timeline               n=43  score=-0.30",
-  "short:theme                  n=27  score=-0.36",
-  "short:theme:beach            n=4   score=-0.58",
+  "short:theme:couples          n=4   score=-0.28",
+  "short:theme:talkies          n=3   score=-0.28",
+  "short:timeline               n=45  score=-0.34",
+  "short:theme:oscars           n=4   score=-0.38",
+  "short:theme                  n=29  score=-0.40",
+  "short:theme:beach            n=4   score=-0.57",
   "short:star                   n=3   score=-0.83"
  ]
 }
