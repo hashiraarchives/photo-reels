@@ -537,6 +537,19 @@ def build_fallback_title(metadata: Dict) -> str:
         f"The Golden Age Photos Collectors Hunt For {decade}",
         f"The Glamour Shots That Made Old Hollywood Unforgettable {decade}",
     ]
+    # Mixed days name the faces inside (2026-11-16): two real names make each
+    # day's title different from yesterday's and give search something to
+    # find. Only stars with 3+ photos in THIS video, so the title is kept.
+    featured = [n for n, c in extract_top_stars(metadata, n=6) if c >= 3]
+    if not lead and len(featured) >= 2:
+        a, b = featured[0], featured[1]
+        history_templates = [
+            f"{a}, {b} and the Stars of Old Hollywood - Rare Photos {decade}",
+            f"From {a} to {b}: Hollywood Glamour in Rare Photos {decade}",
+            f"{a}, {b} and More: Rare Photos That Take You Back {decade}",
+            f"Remember {a} and {b}? Rare Photos of Hollywood's Golden Age {decade}",
+        ] + history_templates
+        templates = history_templates + templates[len(history_templates) - 4:]
     if _has_candid(metadata):
         templates = [
             f"Old Hollywood Off Camera: Rare Candid Photos That Take You Back {decade}",
@@ -588,7 +601,16 @@ def build_fallback_title(metadata: Dict) -> str:
             theme_templates = [hd.theme_title(t, k, ys) for k in range(len(t['titles']))]
     # Star titles first (when this is a star episode), generic only as backup.
     ordered = _rotate(theme_templates) + _rotate(star_templates) + _rotate(templates)
-    title = next((t for t in ordered if not is_title_too_similar(t)), ordered[0])
+    title = next((t for t in ordered if not is_title_too_similar(t)), None)
+    if title is None:
+        # Everything resembles something recent: take the pattern used
+        # longest ago, never simply the first (that repeated one title on
+        # consecutive days).
+        recent = [_title_key(t) for t in load_recent_titles()]
+        def _age(t):
+            k = _title_key(t)
+            return len(recent) - 1 - max((i for i, r in enumerate(recent) if r == k), default=-1)
+        title = max((t for t in ordered if not title_used_before(t)) or ordered, key=_age)
     return finalize_title(
         title,
         allow_emoji=getattr(config, 'TITLE_ALLOW_EMOJI', True),

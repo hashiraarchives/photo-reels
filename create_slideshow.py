@@ -312,11 +312,39 @@ def select_unused_images(count: int = config.IMAGES_PER_VIDEO,
         rows, _ = _read_image_csv(path)
         if not rows:
             continue
+        # Long-form recycles the CURATED pool faster than the bulk pools
+        # (2026-11-16). At a flat 30 days the ~1,070 curated star photos were
+        # all spent within two weeks, and every long video was then built
+        # from bulk leftovers: obscure 1920s film stills for 30 of 40 minutes.
+        lf_days = reuse_days
+        if (not for_shorts and reuse_days is None
+                and os.path.basename(path) == os.path.basename(config.GOLDMINE3_CSV)):
+            lf_days = int(getattr(config, 'LONGFORM_CURATED_REUSE_DAYS', 12))
         usable = [r for r in rows
                   if (_short_available(r, reuse_days or 14) if for_shorts
-                      else _row_is_available(r, reuse_days)) and _passes_quality(r)
+                      else _row_is_available(r, lf_days)) and _passes_quality(r)
                   and (row_filter is None or row_filter(r))]
         pools.append((os.path.basename(path), usable))
+
+    if not for_shorts:
+        # Era balance: the pools are 1920s-heavy, the audience's own era is
+        # the 1940s-60s. Cap pre-1930 rows at a share of the video; the era
+        # angle / star / theme passes still choose freely within what is left.
+        cap = int(count * float(getattr(config, 'LONGFORM_MAX_PRE1930_SHARE', 1.0)))
+        kept_early = 0
+        capped = []
+        for name, usable in pools:
+            random.shuffle(usable)
+            keep_rows = []
+            for r in usable:
+                y = _row_year(r)
+                if y is not None and y < 1930:
+                    if kept_early >= cap:
+                        continue
+                    kept_early += 1
+                keep_rows.append(r)
+            capped.append((name, keep_rows))
+        pools = capped
 
     selected: List[Dict] = []
     picked = set()  # id()s of already-chosen rows
@@ -405,7 +433,16 @@ def select_unused_images(count: int = config.IMAGES_PER_VIDEO,
             break
         taken_urls = {r.get('image_url') for r in selected}
         rest = [r for r in usable if id(r) not in picked and r.get('image_url') not in taken_urls]
-        got = take(rest, count - len(selected))
+        if not for_shorts:
+            # Recognisable stars before anonymous stills: a face the viewer
+            # can name is the reason to keep watching.
+            import star_data as _sd
+            known = [r for r in rest if _sd.identify(r.get('image_filename'), r.get('source_category'))]
+            got = take(known, count - len(selected))
+            if len(got) < count - len(selected):
+                got += take([r for r in rest if id(r) not in picked], count - len(selected) - len(got))
+        else:
+            got = take(rest, count - len(selected))
         selected.extend(got)
         print(f"  {name}: {len(rest)} usable photos available, took {len(got)}")
 

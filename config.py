@@ -122,7 +122,7 @@ IMAGE_DURATION = 12        # seconds per image (verified reference-channel pace)
 LOGO_DURATION = 15         # seconds for intro video (intro.mp4)
 VIDEO_LENGTH_MIN = 19      # minutes minimum
 VIDEO_LENGTH_MAX = 22      # minutes maximum
-IMAGES_PER_VIDEO = 80      # 2026-11: ~40 min SLOW format (owner). Length comes from
+IMAGES_PER_VIDEO = 60      # 2026-11: ~40 min SLOW format (owner). Length comes from
                            # longer holds, not many more photos: the pool could not
                            # refill 100 a day at a 30-day reuse.
 
@@ -132,11 +132,15 @@ IMAGES_PER_VIDEO = 80      # 2026-11: ~40 min SLOW format (owner). Length comes 
 # minute or more. Durations ramp from PACE_START to PACE_END across the body and
 # are then scaled so the whole video lands near the target; FINALE holds apply
 # to the last few photos.
-LONGFORM_TARGET_MINUTES = 40
+LONGFORM_TARGET_MINUTES = 25         # was 40 (2026-11-02..16): first-3-day views fell to a
+                                     # median 90 from 132 at 14 min; 25 keeps the slow, lingering
+                                     # close with a third fewer photos to find each day
+LONGFORM_CURATED_REUSE_DAYS = 12     # curated star pool recycles faster than IMG_REUSE_DAYS
+LONGFORM_MAX_PRE1930_SHARE = 0.15    # at most this share of a long video from before 1930
 LONGFORM_PACE_START = 14   # seconds per photo just after the quick opening
 LONGFORM_PACE_END = 30     # ...easing to this by the end of the body
 LONGFORM_PACE_MAX = 45     # never hold a body photo longer than this
-LONGFORM_FINALE = [45, 60, 75, 90]   # the last photos linger
+LONGFORM_FINALE = [40, 50, 60, 75]   # the last photos linger
 
 # === LONG-FORM LOOK (owner, 2026-11-02): golden italic captions, dark amber ambience ===
 LONGFORM_CAPTION_COLOR = "0xF2C14E"      # warm golden yellow

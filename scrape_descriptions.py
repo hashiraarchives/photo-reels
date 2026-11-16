@@ -133,6 +133,9 @@ def _clean_wikimedia_title(raw_title: str) -> str:
     # Remove common Wikimedia filename noise
     title = re.sub(r'\s*-\s*restored.*$', '', title, flags=re.IGNORECASE)
     title = re.sub(r'\s*\(cropped\).*$', '', title, flags=re.IGNORECASE)
+    # bare editing notes: "The Great Gatsby Retouched Cropped"
+    title = re.sub(r'\b(retouched|cropped|restored|colou?rized|enhanced|edit(ed)?)\b', '', title,
+                   flags=re.IGNORECASE)
     title = re.sub(r'\s*\(restored\).*$', '', title, flags=re.IGNORECASE)
     title = re.sub(r'\bpublicity\s*(still|photo|shot)\s*\d*', '', title, flags=re.IGNORECASE)
     title = re.sub(r'\bfilm\s*still\s*\d*', '', title, flags=re.IGNORECASE)
