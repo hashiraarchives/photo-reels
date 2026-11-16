@@ -53,21 +53,11 @@
   "What a dump!",
   "Play it, Sam. Play 'As Time Goes By.'",
   "There's no place like home.",
-  "The time to make up your mind about people is never."
+  "The time to make up your mind about people is never.",
+  "Well, for years I was smart. I recommend pleasant.",
+  "Fasten your seatbelts. It's going to be a bumpy night."
  ],
  "events": [
-  "I Love Lucy debuted on CBS",
-  "Hitchcock's Psycho shocked audiences",
-  "Betty Grable posed for the most famous pinup photo of the war",
-  "Don Juan premiered with a synchronized score and sound effects",
-  "Hitchcock's Psycho shocked audiences",
-  "Grace Kelly starred in Rear Window and The Country Girl",
-  "Don Juan premiered with a synchronized score and sound effects",
-  "Dr. No introduced James Bond to movie audiences",
-  "Gone with the Wind and The Wizard of Oz both premiered",
-  "Breakfast at Tiffany's premiered",
-  "Grace Kelly starred in Rear Window and The Country Girl",
-  "Rudolph Valentino became a sensation in The Sheik",
   "the Production Code began to be strictly enforced",
   "Grace Kelly married Prince Rainier and became Princess of Monaco",
   "Clara Bow became the 'It Girl' in It",
@@ -115,13 +105,21 @@
   "American movie attendance hit its postwar peak",
   "The Philadelphia Story paired Katharine Hepburn, Cary Grant and James Stewart",
   "It's a Wonderful Life premiered",
-  "Breakfast at Tiffany's premiered"
+  "Breakfast at Tiffany's premiered",
+  "Greta Garbo spoke her first lines on screen in Anna Christie",
+  "Grace Kelly starred in Rear Window and The Country Girl",
+  "Hitchcock's Psycho shocked audiences",
+  "All About Eve and Sunset Boulevard both premiered",
+  "Hitchcock's Psycho shocked audiences",
+  "My Fair Lady premiered",
+  "Going My Way and Double Indemnity filled theaters",
+  "Dr. No introduced James Bond to movie audiences",
+  "the Production Code began to be strictly enforced",
+  "Casablanca premiered and the Hollywood Canteen opened its doors",
+  "CinemaScope debuted with The Robe",
+  "Cleopatra opened, the most expensive film made up to that time"
  ],
  "prompts": [
-  "Remember these faces?",
-  "Who did we miss?",
-  "Which decade was the best?",
-  "Remember these faces?",
   "Best screen couple ever?",
   "Which decade was the best?",
   "Who deserved more Oscars?",
@@ -137,11 +135,13 @@
   "Which era would you visit?",
   "Remember these faces?",
   "Which decade was the best?",
-  "Who did we miss?"
+  "Who did we miss?",
+  "Which era would you visit?",
+  "Remember these faces?",
+  "Which decade was the best?",
+  "Who deserved more Oscars?"
  ],
  "themes": [
-  "nicknames",
-  "couples",
   "talkies",
   "golden",
   "war",
@@ -169,7 +169,9 @@
   "beach",
   "talkies",
   "war",
-  "nicknames"
+  "nicknames",
+  "golden",
+  "oscars"
  ],
  "lf_themes": [
   "beach",
