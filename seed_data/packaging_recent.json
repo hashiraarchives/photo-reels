@@ -55,18 +55,10 @@
   "There's no place like home.",
   "The time to make up your mind about people is never.",
   "Well, for years I was smart. I recommend pleasant.",
-  "Fasten your seatbelts. It's going to be a bumpy night."
+  "Fasten your seatbelts. It's going to be a bumpy night.",
+  "Preview of coming attractions."
  ],
  "events": [
-  "the Production Code began to be strictly enforced",
-  "Grace Kelly married Prince Rainier and became Princess of Monaco",
-  "Clara Bow became the 'It Girl' in It",
-  "The Adventures of Robin Hood dazzled audiences in Technicolor",
-  "Grace Kelly married Prince Rainier and became Princess of Monaco",
-  "Greta Garbo spoke her first lines on screen in Anna Christie",
-  "television's first Emmy Awards were presented",
-  "Breakfast at Tiffany's premiered",
-  "Ben-Hur became the most expensive silent film ever made",
   "Citizen Kane premiered",
   "The Sound of Music became a box-office phenomenon",
   "Don Juan premiered with a synchronized score and sound effects",
@@ -117,12 +109,18 @@
   "the Production Code began to be strictly enforced",
   "Casablanca premiered and the Hollywood Canteen opened its doors",
   "CinemaScope debuted with The Robe",
-  "Cleopatra opened, the most expensive film made up to that time"
+  "Cleopatra opened, the most expensive film made up to that time",
+  "Becky Sharp became the first feature in three-strip Technicolor",
+  "the war ended and Hollywood's stars came home",
+  "Pickford, Chaplin, Fairbanks and Griffith founded United Artists",
+  "Dracula and Frankenstein started Universal's monster craze",
+  "It's a Wonderful Life premiered",
+  "The Philadelphia Story paired Katharine Hepburn, Cary Grant and James Stewart",
+  "Grace Kelly starred in Rear Window and The Country Girl",
+  "All About Eve and Sunset Boulevard both premiered",
+  "I Love Lucy debuted on CBS"
  ],
  "prompts": [
-  "Best screen couple ever?",
-  "Which decade was the best?",
-  "Who deserved more Oscars?",
   "Who did we miss?",
   "Which era would you visit?",
   "Which decade was the best?",
@@ -139,10 +137,12 @@
   "Which era would you visit?",
   "Remember these faces?",
   "Which decade was the best?",
-  "Who deserved more Oscars?"
+  "Who deserved more Oscars?",
+  "Which era would you visit?",
+  "Remember these faces?",
+  "Drive-in or movie palace?"
  ],
  "themes": [
-  "talkies",
   "golden",
   "war",
   "silent",
@@ -171,7 +171,8 @@
   "war",
   "nicknames",
   "golden",
-  "oscars"
+  "oscars",
+  "fifties"
  ],
  "lf_themes": [
   "beach",
