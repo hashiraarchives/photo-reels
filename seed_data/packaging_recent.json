@@ -56,20 +56,10 @@
   "The time to make up your mind about people is never.",
   "Well, for years I was smart. I recommend pleasant.",
   "Fasten your seatbelts. It's going to be a bumpy night.",
-  "Preview of coming attractions."
+  "Preview of coming attractions.",
+  "Of all the gin joints in all the towns in all the world, she walks into mine."
  ],
  "events": [
-  "Citizen Kane premiered",
-  "The Sound of Music became a box-office phenomenon",
-  "Don Juan premiered with a synchronized score and sound effects",
-  "My Fair Lady premiered",
-  "television's first Emmy Awards were presented",
-  "the Hollywoodland sign went up in the hills above Los Angeles",
-  "The Jazz Singer brought spoken dialogue to the movies",
-  "Casablanca premiered and the Hollywood Canteen opened its doors",
-  "Chaplin said farewell to the Little Tramp in Modern Times",
-  "Hitchcock's Psycho shocked audiences",
-  "Clara Bow became the 'It Girl' in It",
   "CinemaScope debuted with The Robe",
   "Greta Garbo spoke her first lines on screen in Anna Christie",
   "television's first Emmy Awards were presented",
@@ -118,13 +108,20 @@
   "The Philadelphia Story paired Katharine Hepburn, Cary Grant and James Stewart",
   "Grace Kelly starred in Rear Window and The Country Girl",
   "All About Eve and Sunset Boulevard both premiered",
-  "I Love Lucy debuted on CBS"
+  "I Love Lucy debuted on CBS",
+  "Becky Sharp became the first feature in three-strip Technicolor",
+  "Ben-Hur became the most expensive silent film ever made",
+  "the first Academy Awards were presented in Hollywood",
+  "the rating system replaced the Production Code",
+  "CinemaScope debuted with The Robe",
+  "Clara Bow became the 'It Girl' in It",
+  "The Jazz Singer brought spoken dialogue to the movies",
+  "Mickey Mouse debuted in Steamboat Willie",
+  "the Production Code began to be strictly enforced",
+  "Singin' in the Rain premiered",
+  "The Jazz Singer brought spoken dialogue to the movies"
  ],
  "prompts": [
-  "Who did we miss?",
-  "Which era would you visit?",
-  "Which decade was the best?",
-  "Who did we miss?",
   "Best year for movies?",
   "Ever been to a boardwalk?",
   "Silent or talkie?",
@@ -140,10 +137,13 @@
   "Who deserved more Oscars?",
   "Which era would you visit?",
   "Remember these faces?",
-  "Drive-in or movie palace?"
+  "Drive-in or movie palace?",
+  "Which era would you visit?",
+  "Which decade was the best?",
+  "Silent or talkie?",
+  "Which era would you visit?"
  ],
  "themes": [
-  "golden",
   "war",
   "silent",
   "nicknames",
@@ -172,7 +172,8 @@
   "nicknames",
   "golden",
   "oscars",
-  "fifties"
+  "fifties",
+  "talkies"
  ],
  "lf_themes": [
   "beach",
