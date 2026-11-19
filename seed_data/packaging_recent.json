@@ -57,12 +57,10 @@
   "Well, for years I was smart. I recommend pleasant.",
   "Fasten your seatbelts. It's going to be a bumpy night.",
   "Preview of coming attractions.",
-  "Of all the gin joints in all the towns in all the world, she walks into mine."
+  "Of all the gin joints in all the towns in all the world, she walks into mine.",
+  "Do you want a leg or a breast?"
  ],
  "events": [
-  "CinemaScope debuted with The Robe",
-  "Greta Garbo spoke her first lines on screen in Anna Christie",
-  "television's first Emmy Awards were presented",
   "Becky Sharp became the first feature in three-strip Technicolor",
   "Disney's Snow White became America's first full-length animated feature",
   "Gone with the Wind and The Wizard of Oz both premiered",
@@ -119,10 +117,12 @@
   "Mickey Mouse debuted in Steamboat Willie",
   "the Production Code began to be strictly enforced",
   "Singin' in the Rain premiered",
-  "The Jazz Singer brought spoken dialogue to the movies"
+  "The Jazz Singer brought spoken dialogue to the movies",
+  "Dr. No introduced James Bond to movie audiences",
+  "The Jazz Singer brought spoken dialogue to the movies",
+  "Greta Garbo spoke her first lines on screen in Anna Christie"
  ],
  "prompts": [
-  "Best year for movies?",
   "Ever been to a boardwalk?",
   "Silent or talkie?",
   "Remember these faces?",
@@ -141,10 +141,10 @@
   "Which era would you visit?",
   "Which decade was the best?",
   "Silent or talkie?",
-  "Which era would you visit?"
+  "Which era would you visit?",
+  "Which decade was the best?"
  ],
  "themes": [
-  "war",
   "silent",
   "nicknames",
   "talkies",
@@ -173,7 +173,8 @@
   "golden",
   "oscars",
   "fifties",
-  "talkies"
+  "talkies",
+  "silent"
  ],
  "lf_themes": [
   "beach",
