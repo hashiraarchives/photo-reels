@@ -63,18 +63,6 @@
   "The calla lilies are in bloom again."
  ],
  "events": [
-  "Cleopatra opened, the most expensive film made up to that time",
-  "Becky Sharp became the first feature in three-strip Technicolor",
-  "the war ended and Hollywood's stars came home",
-  "Pickford, Chaplin, Fairbanks and Griffith founded United Artists",
-  "Dracula and Frankenstein started Universal's monster craze",
-  "It's a Wonderful Life premiered",
-  "The Philadelphia Story paired Katharine Hepburn, Cary Grant and James Stewart",
-  "Grace Kelly starred in Rear Window and The Country Girl",
-  "All About Eve and Sunset Boulevard both premiered",
-  "I Love Lucy debuted on CBS",
-  "Becky Sharp became the first feature in three-strip Technicolor",
-  "Ben-Hur became the most expensive silent film ever made",
   "the first Academy Awards were presented in Hollywood",
   "the rating system replaced the Production Code",
   "CinemaScope debuted with The Robe",
@@ -122,13 +110,21 @@
   "Citizen Kane premiered",
   "The Jazz Singer brought spoken dialogue to the movies",
   "King Kong climbed the Empire State Building",
-  "CinemaScope debuted with The Robe"
+  "CinemaScope debuted with The Robe",
+  "Becky Sharp became the first feature in three-strip Technicolor",
+  "Singin' in the Rain premiered",
+  "The Jazz Singer brought spoken dialogue to the movies",
+  "Disney's Snow White became America's first full-length animated feature",
+  "Miracle on 34th Street premiered",
+  "The Jazz Singer brought spoken dialogue to the movies",
+  "the Production Code began to be strictly enforced",
+  "American movie attendance hit its postwar peak",
+  "Elvis Presley starred in Jailhouse Rock",
+  "Grace Kelly starred in Rear Window and The Country Girl",
+  "Disneyland opened in Anaheim, California",
+  "Ben-Hur and Some Like It Hot both premiered"
  ],
  "prompts": [
-  "Which era would you visit?",
-  "Remember these faces?",
-  "Drive-in or movie palace?",
-  "Which era would you visit?",
   "Which decade was the best?",
   "Silent or talkie?",
   "Which era would you visit?",
@@ -144,10 +140,13 @@
   "Which decade was the best?",
   "Who did we miss?",
   "Who did Dad have a pinup of?",
-  "Which era would you visit?"
+  "Which era would you visit?",
+  "Remember these faces?",
+  "Who did we miss?",
+  "Which era would you visit?",
+  "Drive-in or movie palace?"
  ],
  "themes": [
-  "beach",
   "couples",
   "silent",
   "oscars",
@@ -176,7 +175,8 @@
   "silent",
   "couples",
   "golden",
-  "war"
+  "war",
+  "fifties"
  ],
  "lf_themes": [
   "beach",
