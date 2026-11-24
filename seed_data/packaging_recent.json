@@ -63,15 +63,6 @@
   "The calla lilies are in bloom again."
  ],
  "events": [
-  "the first Academy Awards were presented in Hollywood",
-  "the rating system replaced the Production Code",
-  "CinemaScope debuted with The Robe",
-  "Clara Bow became the 'It Girl' in It",
-  "The Jazz Singer brought spoken dialogue to the movies",
-  "Mickey Mouse debuted in Steamboat Willie",
-  "the Production Code began to be strictly enforced",
-  "Singin' in the Rain premiered",
-  "The Jazz Singer brought spoken dialogue to the movies",
   "Dr. No introduced James Bond to movie audiences",
   "The Jazz Singer brought spoken dialogue to the movies",
   "Greta Garbo spoke her first lines on screen in Anna Christie",
@@ -122,12 +113,18 @@
   "Elvis Presley starred in Jailhouse Rock",
   "Grace Kelly starred in Rear Window and The Country Girl",
   "Disneyland opened in Anaheim, California",
-  "Ben-Hur and Some Like It Hot both premiered"
+  "Ben-Hur and Some Like It Hot both premiered",
+  "television's first Emmy Awards were presented",
+  "The Jazz Singer brought spoken dialogue to the movies",
+  "Becky Sharp became the first feature in three-strip Technicolor",
+  "Mickey Mouse debuted in Steamboat Willie",
+  "Greta Garbo spoke her first lines on screen in Anna Christie",
+  "King Kong climbed the Empire State Building",
+  "Rudolph Valentino became a sensation in The Sheik",
+  "The Adventures of Robin Hood dazzled audiences in Technicolor",
+  "Betty Grable posed for the most famous pinup photo of the war"
  ],
  "prompts": [
-  "Which decade was the best?",
-  "Silent or talkie?",
-  "Which era would you visit?",
   "Which decade was the best?",
   "Best screen couple ever?",
   "Best year for movies?",
@@ -144,11 +141,12 @@
   "Remember these faces?",
   "Who did we miss?",
   "Which era would you visit?",
-  "Drive-in or movie palace?"
+  "Drive-in or movie palace?",
+  "Who did we miss?",
+  "Silent or talkie?",
+  "Which decade was the best?"
  ],
  "themes": [
-  "couples",
-  "silent",
   "oscars",
   "nicknames",
   "golden",
@@ -176,7 +174,9 @@
   "couples",
   "golden",
   "war",
-  "fifties"
+  "fifties",
+  "talkies",
+  "nicknames"
  ],
  "lf_themes": [
   "beach",
