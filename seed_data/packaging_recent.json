@@ -60,21 +60,10 @@
   "Of all the gin joints in all the towns in all the world, she walks into mine.",
   "Do you want a leg or a breast?",
   "I coulda been a contender.",
-  "The calla lilies are in bloom again."
+  "The calla lilies are in bloom again.",
+  "Kiss me. Kiss me as if it were the last time."
  ],
  "events": [
-  "Casablanca premiered and the Hollywood Canteen opened its doors",
-  "Grace Kelly starred in Rear Window and The Country Girl",
-  "My Fair Lady premiered",
-  "Don Juan premiered with a synchronized score and sound effects",
-  "The Jazz Singer brought spoken dialogue to the movies",
-  "It's a Wonderful Life premiered",
-  "the first Academy Awards were presented in Hollywood",
-  "Breakfast at Tiffany's premiered",
-  "Citizen Kane premiered",
-  "Dracula and Frankenstein started Universal's monster craze",
-  "American movie attendance hit its postwar peak",
-  "the Hollywoodland sign went up in the hills above Los Angeles",
   "Clara Bow became the 'It Girl' in It",
   "Pickford, Chaplin, Fairbanks and Griffith founded United Artists",
   "Greta Garbo spoke her first lines on screen in Anna Christie",
@@ -122,13 +111,21 @@
   "television's first Emmy Awards were presented",
   "The Jazz Singer brought spoken dialogue to the movies",
   "the Production Code began to be strictly enforced",
-  "Grace Kelly married Prince Rainier and became Princess of Monaco"
+  "Grace Kelly married Prince Rainier and became Princess of Monaco",
+  "the first Academy Awards were presented in Hollywood",
+  "The Philadelphia Story paired Katharine Hepburn, Cary Grant and James Stewart",
+  "All About Eve and Sunset Boulevard both premiered",
+  "Rudolph Valentino became a sensation in The Sheik",
+  "Don Juan premiered with a synchronized score and sound effects",
+  "Chaplin said farewell to the Little Tramp in Modern Times",
+  "Greta Garbo spoke her first lines on screen in Anna Christie",
+  "Betty Grable posed for the most famous pinup photo of the war",
+  "Breakfast at Tiffany's premiered",
+  "Mickey Mouse debuted in Steamboat Willie",
+  "American movie attendance hit its postwar peak",
+  "Grace Kelly starred in Rear Window and The Country Girl"
  ],
  "prompts": [
-  "Which era would you visit?",
-  "Which decade was the best?",
-  "Remember these faces?",
-  "Who did we miss?",
   "Which era would you visit?",
   "Which decade was the best?",
   "Who did we miss?",
@@ -144,7 +141,11 @@
   "Remember these faces?",
   "Ever been to a boardwalk?",
   "Which decade was the best?",
-  "Best screen couple ever?"
+  "Best screen couple ever?",
+  "Remember these faces?",
+  "Which decade was the best?",
+  "Who did we miss?",
+  "Remember these faces?"
  ],
  "themes": [
   "golden",
