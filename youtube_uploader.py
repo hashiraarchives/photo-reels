@@ -550,6 +550,16 @@ def build_fallback_title(metadata: Dict) -> str:
             f"Remember {a} and {b}? Rare Photos of Hollywood's Golden Age {decade}",
         ] + history_templates
         templates = history_templates + templates[len(history_templates) - 4:]
+    # Icons & everyday life (2026-11-28): the framing on Vintage Visions'
+    # biggest videos, used only when real everyday photos are in this one.
+    imgs = metadata.get('images', [])
+    if imgs and sum(1 for i in imgs if i.get('everyday')) >= 0.15 * len(imgs):
+        templates = [
+            f"Hollywood Icons & Everyday Life: Rare Vintage Photos {decade}",
+            f"Hollywood Glamour and Everyday America in Rare Photos {decade}",
+            f"Stars and Everyday Americans: Rare Color and Archive Photos {decade}",
+            f"How America Really Looked: Hollywood Icons & Everyday Life {decade}",
+        ] + templates
     if _has_candid(metadata):
         templates = [
             f"Old Hollywood Off Camera: Rare Candid Photos That Take You Back {decade}",
@@ -1118,6 +1128,7 @@ def upload_from_metadata(metadata_path: str, privacy: str = None,
             youtube_data = json.load(f)
         title = youtube_data.get('title') or generate_title(metadata)
         thumbnail_path = youtube_data.get('thumbnail_path')
+        metadata['thumb_poster'] = bool(youtube_data.get('thumb_poster'))
         gemini_tags = youtube_data.get('gemini_tags')
         source = youtube_data.get('source', 'unknown')
         source_label = 'Gemini' if source == 'gemini' else f'fallback template ({source})'
@@ -1141,6 +1152,8 @@ def upload_from_metadata(metadata_path: str, privacy: str = None,
         star=(metadata.get('focus_star') or '').strip(),
         log_info={'format': 'history' if metadata.get('eras') else 'slideshow',
                   'theme_key': metadata.get('theme_key') or '',
+                  'thumb_poster': bool(metadata.get('thumb_poster')),
+                  'everyday': sum(1 for i in metadata.get('images', []) if i.get('everyday')),
                   'eras': metadata.get('eras') or [],
                   'images': metadata.get('image_count')},
     )

@@ -191,6 +191,21 @@ def approx_year(clip: Dict, name: Optional[str] = None) -> Optional[int]:
         info = sd.STAR_INFO.get(name.lower())
         if info:
             return info[1] + 28
+    era = collection_era(clip.get('category') or clip.get('source_category') or '')
+    return era[1] if era else None
+
+
+def collection_era(category: str):
+    """(label, ordering year) for the US-government color collections in the
+    everyday-life pool, whose files rarely carry a year. The label is a true
+    span for the whole collection, so it can be shown on screen."""
+    c = (category or '').lower()
+    if 'farm security administration' in c or 'fsa' in c.split():
+        return ('America in color, 1939 to 1945', 1942)
+    if 'documerica' in c:
+        return ('America in the 1970s', 1974)
+    if 'uso' in c or 'bob hope' in c:
+        return ('Entertaining the troops', None)
     return None
 
 

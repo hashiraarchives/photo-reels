@@ -633,6 +633,79 @@ def _draw_word(img: Image.Image, word: str, text_color: str) -> Image.Image:
     return img
 
 
+def poster_text(metadata: Dict, title: str):
+    """(headline, subline) for the poster-style thumbnail: what the video is,
+    in two or three big words, and its decade span. Built only from facts the
+    video keeps (its star, theme, everyday share, decade range)."""
+    import re as _re
+    star = (metadata.get('focus_star') or '').strip()
+    tk = (metadata.get('theme_key') or '').strip()
+    imgs = metadata.get('images', [])
+    m = _re.search(r'\((\d{4}s?)\s*[-\u2013]\s*(\d{4}s?)\)', title or '')
+    sub = f"{m.group(1)} \u2013 {m.group(2)}" if m else ''
+    if star:
+        return star.upper(), sub or 'RARE PHOTOS'
+    if tk:
+        return {'couples': 'SCREEN COUPLES', 'beach': 'BATHING BEAUTIES'}.get(
+            tk, tk.replace('_', ' ').upper()), sub
+    if imgs and sum(1 for i in imgs if i.get('everyday')) >= 0.15 * len(imgs):
+        return 'ICONS & EVERYDAY LIFE', sub
+    seed = sum(map(ord, title or ''))
+    return ['GOLDEN ERA ICONS', 'HOLLYWOOD GLAMOUR', 'RARE ARCHIVE PHOTOS',
+            'TIMELESS ELEGANCE'][seed % 4], sub
+
+
+def add_poster_text(path: str, headline: str, sub: str = '') -> None:
+    """Poster-style lettering, the standard on every competitor thumbnail:
+    a big gold serif headline with a heavy dark outline over a dark ribbon in
+    the lower third (faces sit in the upper half), the decade span in a
+    small red ribbon beneath."""
+    img = Image.open(path).convert('RGB')
+    W, H = img.size
+    fpath = getattr(config, 'SERIF_FONT_FILE', None)
+
+    def font(sz):
+        try:
+            return ImageFont.truetype(fpath, sz) if fpath else _load_font(sz)
+        except (IOError, OSError):
+            return _load_font(sz)
+    d = ImageDraw.Draw(img)
+    words = headline.split()
+    lines = [headline]
+    size = 104
+    while size > 56 and d.textlength(headline, font=font(size)) > W * 0.86:
+        size -= 6
+    if d.textlength(headline, font=font(size)) > W * 0.86 and len(words) > 1:
+        half = (len(words) + 1) // 2
+        lines = [' '.join(words[:half]), ' '.join(words[half:])]
+        size = 100
+        while size > 56 and max(d.textlength(l, font=font(size)) for l in lines) > W * 0.86:
+            size -= 6
+    f = font(size)
+    lh = int(size * 1.05)
+    sub_f = font(40)
+    block_h = lh * len(lines) + (58 if sub else 0)
+    y0 = H - block_h - 46
+    rib = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+    rd = ImageDraw.Draw(rib)
+    for y in range(max(0, y0 - 40), H):
+        a = int(200 * min(1.0, (y - (y0 - 40)) / 70))
+        rd.line([(0, y), (W, y)], fill=(12, 8, 4, a))
+    img = Image.alpha_composite(img.convert('RGBA'), rib).convert('RGB')
+    d = ImageDraw.Draw(img)
+    gold, cream = (242, 193, 78), (250, 236, 200)
+    for i, ln in enumerate(lines):
+        tw = d.textlength(ln, font=f)
+        d.text(((W - tw) / 2, y0 + i * lh), ln, font=f, fill=gold if i == 0 else cream,
+               stroke_width=max(4, size // 14), stroke_fill=(20, 10, 2))
+    if sub:
+        tw = d.textlength(sub, font=sub_f)
+        bx0, by0 = (W - tw) / 2 - 22, y0 + lh * len(lines) + 6
+        d.rectangle([bx0, by0, bx0 + tw + 44, by0 + 50], fill=(150, 24, 24))
+        d.text(((W - tw) / 2, by0 + 3), sub, font=sub_f, fill=(255, 246, 228))
+    img.save(path, 'JPEG', quality=95)
+
+
 def create_thumbnail(image_path: str, output_path: str,
                      title_text: str = None, text_color: str = '#F4D67A') -> str:
     """
@@ -992,10 +1065,31 @@ def generate_thumbnail_and_title(metadata_path: str) -> Dict:
         print("  Warning: No image available for thumbnail")
         thumbnail_path = None
 
+    # POSTER TEXT experiment (2026-11-28): every Vintage Visions, Retro
+    # Reflections and Old World Photos thumbnail carries big lettering; ours
+    # carried none. Run as a measured share (tuner.py weighs it by results).
+    poster = False
+    if thumbnail_path:
+        rate = float(getattr(config, 'THUMB_POSTER_RATE', 0.0))
+        try:
+            import tuner
+            rate = float(tuner.load().get('thumb_poster_rate', rate))
+        except Exception:
+            pass
+        poster = random.random() < rate
+        if poster:
+            try:
+                head, sub = poster_text(metadata, title)
+                add_poster_text(thumbnail_path, head, sub)
+                print(f"  Poster text: {head} | {sub}")
+            except Exception as e:
+                poster = False
+                print(f"  Poster text skipped ({e})")
     names = extract_names_from_metadata(metadata)
     result = {
         'title': title,
         'thumbnail_path': thumbnail_path,
+        'thumb_poster': poster,
         'names_found': names,
         'source': gemini_result['source'] if gemini_result else 'template',
     }

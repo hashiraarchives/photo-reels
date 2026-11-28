@@ -135,6 +135,7 @@ IMAGES_PER_VIDEO = 60      # 2026-11: ~40 min SLOW format (owner). Length comes 
 LONGFORM_TARGET_MINUTES = 25         # was 40 (2026-11-02..16): first-3-day views fell to a
                                      # median 90 from 132 at 14 min; 25 keeps the slow, lingering
                                      # close with a third fewer photos to find each day
+LONGFORM_EVERYDAY_SHARE = 0.25      # share of a long video from everyday mid-century America
 LONGFORM_CURATED_REUSE_DAYS = 12     # curated star pool recycles faster than IMG_REUSE_DAYS
 LONGFORM_MAX_PRE1930_SHARE = 0.15    # at most this share of a long video from before 1930
 LONGFORM_PACE_START = 14   # seconds per photo just after the quick opening
@@ -218,6 +219,8 @@ THUMB_ENABLE_ARROW = False        # OFF 2026-10 (owner: "not the red arrows"); m
 THUMB_INTIMACY = True             # rank thumbnail frames for warmth: kiss/embrace/dance/beach/evening out
 THUMB_FACE_PROXIMITY = True       # ...plus two faces touching (OpenCV Haar, free); skipped if cv2 missing
 THUMB_WARMTH = 0.35               # subtle warm tone over B&W (0 = neutral; July's sepia was ~1.0)
+THUMB_POSTER_RATE = 0.6          # 2026-11-28: share of long-form thumbnails with poster
+                                  # lettering (competitor standard); tuner.py adjusts it
 THUMB_ENABLE_TEXT = False         # on-thumbnail word + subtext OFF — image sells it.
 THUMB_TEXT_WORD = None            # if THUMB_ENABLE_TEXT, force this single ALL-CAPS word (else rotate)
 THUMB_GREYSCALE_RATIO = 0.0       # 0.0 = 100% warm color. Warm tones read better for 65+ eyes.

@@ -410,6 +410,24 @@ def select_unused_images(count: int = config.IMAGES_PER_VIDEO,
     if theme_episode and not theme_key and focus_star is None:
         theme_key = _take_theme_block(count, reuse_days, selected, picked)
 
+    # Pass 0b — EVERYDAY LIFE (2026-11-28). Vintage Visions' biggest videos
+    # are sold as "Icons & Everyday Life": stars mixed with how ordinary
+    # people lived. Our public-domain equivalent is the US-government color
+    # work (FSA/OWI Kodachromes 1939-45, DOCUMERICA 1971-77) and USO shows.
+    life_share = 0.0 if for_shorts or star_share == 1.0 else float(
+        getattr(config, 'LONGFORM_EVERYDAY_SHARE', 0.0))
+    life_path = getattr(config, 'GOLDMINE_LIFE_CSV', '')
+    if life_share and life_path and os.path.exists(life_path):
+        life_rows = [r for r in _read_image_csv(life_path)[0]
+                     if (r.get('life_theme') or '') in ('americana', 'uso')
+                     and _row_is_available(r, reuse_days) and _passes_quality(r)
+                     and id(r) not in picked]
+        got = take(life_rows, int(count * life_share))
+        for r in got:
+            r['everyday'] = True
+        selected.extend(got)
+        print(f"  everyday life: took {len(got)} of {len(life_rows)} free")
+
     # Pass 1 — era-biased picks (~60% of the video) on era-angle days.
     if focus_star is None and theme_key is None and lo is not None:
         in_window = lambda r: (y := _row_year(r)) is not None and lo <= y <= hi
@@ -1479,6 +1497,12 @@ def _montage_long_captions(images: List[Dict]) -> None:
             # a screen couple (2026-10): who, the film, a real-life marriage
             img['generated_caption'] = sd.couple_caption(couple[0], couple[1], raw,
                                                          img.get('source_category') or '', year)
+            n_done += 1
+            continue
+        if img.get('everyday') or (img.get('life_theme') or '') in ('americana', 'uso'):
+            story = sd.story_caption(img.get('description') or '', year, seed=idx)
+            era = hd.collection_era(img.get('source_category') or '')
+            img['generated_caption'] = story or (f"{era[0]}." if era else '')
             n_done += 1
             continue
         if (img.get('life_theme') or '') == 'beach' or not name:

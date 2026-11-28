@@ -39,7 +39,32 @@ THEME_CATEGORIES = {
         "Category:1940s swimwear",
         "Category:1950s swimwear",
     ],
+    # 2026-11-28 "Icons & Everyday Life" (the phrase on Vintage Visions'
+    # biggest videos): mid-century America in COLOR, all US-government work
+    # and so public domain -- the FSA/OWI Kodachromes (1939-45), DOCUMERICA
+    # (EPA, 1971-77) -- plus stars entertaining the troops.
+    'americana': [
+        "Category:Color photographs from the Farm Security Administration",
+        "Category:DOCUMERICA",
+    ],
+    'uso': [
+        "Category:USO shows",
+        "Category:Bob Hope and the USO",
+    ],
 }
+# Per-theme rules: beach photos must show a beach moment in America; the
+# government collections are American by definition and on-theme as a whole.
+THEME_NEEDS_BEACH = {'beach'}
+THEME_NEEDS_US = {'beach'}
+THEME_ALLOW_MEN = {'americana', 'uso'}
+# Hardship and protest belong to history, not to a relaxing nostalgia reel
+# set to soft music: internment camps, labor camps, poverty, and DOCUMERICA's
+# pollution/waste/decay assignments are left out.
+_SOMBER = re.compile(r"\b(relocation|internment|interned|evacuee|japanese.american|labor camp|"
+                     r"migra(nt|tory)|slum|poverty|destitute|relief|sharecropp\w*|pollut\w*|smog|"
+                     r"sewage|waste|dump|junk ?yard|garbage|litter|erosion|strip min\w*|oil spill|"
+                     r"demolition|abandoned|condemned|protest|riot|funeral|cemetery|grave|hospital|"
+                     r"prison|jail|negro\w*|colored)\b", re.I)
 
 _CHILD = re.compile(
     r"\b(child|children|kid|kids|boy|boys|baby|babies|infant|toddler|tot|tots|little girl|"
@@ -80,7 +105,7 @@ def _desc(f) -> str:
     return ' '.join(txt.split())[:240]
 
 
-def life_ok(f) -> str:
+def life_ok(f, theme: str = 'beach') -> str:
     """'' if acceptable, else the reason it was skipped."""
     try:
         ii = f['imageinfo'][0]
@@ -112,13 +137,15 @@ def life_ok(f) -> str:
         return 'child'
     if _PRINT.search(text) or any(b in catblob for b in h.CATEGORY_DENY):
         return 'print'
-    if _MEN_ONLY.search(text):
+    if theme in ('americana', 'uso') and _SOMBER.search(f"{text} {catblob}"):
+        return 'somber'
+    if theme not in THEME_ALLOW_MEN and _MEN_ONLY.search(text):
         return 'men only'
     # the photo itself must be a beach/bathing moment (a star's subcategory
     # also holds her studio portraits, which would break the theme's promise)
-    if not _BEACH.search(f"{text} {catblob}"):
+    if theme in THEME_NEEDS_BEACH and not _BEACH.search(f"{text} {catblob}"):
         return 'off theme'
-    if not life_relevant(f"{text} {catblob}"):
+    if theme in THEME_NEEDS_US and not life_relevant(f"{text} {catblob}"):
         return 'not American'
     w, hh = ii.get('width', 0), ii.get('height', 0)
     if max(w, hh) < 1200 or w / max(hh, 1) > 2.0 or hh / max(w, 1) > 2.4:
@@ -130,13 +157,17 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--dry-run', action='store_true')
     ap.add_argument('--depth', type=int, default=1, help='subcategory depth')
+    ap.add_argument('--themes', default='', help='comma list (default: all)')
     args = ap.parse_args()
 
     existing = h.load_existing_urls()
     if os.path.exists(OUT_CSV):
         existing |= {r['image_url'] for r in csv.DictReader(open(OUT_CSV, encoding='utf-8'))}
     rows, seen, reasons = [], set(), {}
+    only = {t for t in args.themes.split(',') if t}
     for theme, cats in THEME_CATEGORIES.items():
+        if only and theme not in only:
+            continue
         queue = [(c, 0) for c in cats]
         visited = set()
         while queue:
@@ -146,7 +177,7 @@ def main():
             visited.add(cat)
             n_cat = 0
             for f in h.iter_files(cat):
-                why = life_ok(f)
+                why = life_ok(f, theme)
                 if why:
                     reasons[why] = reasons.get(why, 0) + 1
                     continue

@@ -199,6 +199,9 @@ def update() -> Dict:
         if m.get('retention') is not None and rmed.get(kind):
             rel += 0.5 * math.log(m['retention'] / rmed[kind])      # watching > clicking
         samples.setdefault(arm, []).append(rel)
+        if kind == 'long' and 'thumb_poster' in rec:
+            samples.setdefault('long:thumb:' + ('poster' if rec['thumb_poster'] else 'plain'),
+                               []).append(rel)
         if arm.startswith('short:theme:'):
             samples.setdefault('short:theme', []).append(rel)    # the kind as a whole
         if kind == 'short' and m['views'] >= BREAKOUT * med[kind]:
@@ -226,6 +229,13 @@ def update() -> Dict:
     long_theme = score.get('long:theme:couples', 0) * 0.5 + score.get('long:theme:beach', 0) * 0.5
     long_other = (score.get('long:star', 0) + score.get('long:mixed', 0)) / 2
     long_rate = round(min(0.7, max(0.2, 0.35 + 0.5 * (long_theme - long_other))), 2)
+    # poster-text thumbnails vs plain: start from the configured share and
+    # move it with the measured difference (kept inside 0.2-0.9 so both
+    # styles keep being tested)
+    base_poster = float(getattr(config, 'THUMB_POSTER_RATE', 0.6))
+    if 'long:thumb:poster' in samples and 'long:thumb:plain' in samples:
+        base_poster += 0.6 * (score['long:thumb:poster'] - score['long:thumb:plain'])
+    poster_rate = round(min(0.9, max(0.2, base_poster)), 2)
     today = datetime.utcnow().strftime('%Y-%m-%d')
     breakouts = [b for b in breakouts if b['until'] >= today]
 
@@ -235,6 +245,7 @@ def update() -> Dict:
            'median_first_days_views': med, 'median_retention': rmed,
            'short_kind_weights': kinds, 'short_theme_weights': themes,
            'long_theme_rate': long_rate,
+           'thumb_poster_rate': poster_rate,
            'followups': breakouts[-6:], 'report': report}
     with open(OUT, 'w', encoding='utf-8') as f:
         json.dump(out, f, indent=1, ensure_ascii=False)
