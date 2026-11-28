@@ -641,7 +641,7 @@ def poster_text(metadata: Dict, title: str):
     star = (metadata.get('focus_star') or '').strip()
     tk = (metadata.get('theme_key') or '').strip()
     imgs = metadata.get('images', [])
-    m = _re.search(r'\((\d{4}s?)\s*[-\u2013]\s*(\d{4}s?)\)', title or '')
+    m = _re.search(r'\((\d{4}s?)\s*(?:[-\u2013]|to)\s*(\d{4}s?)\)', title or '')
     sub = f"{m.group(1)} \u2013 {m.group(2)}" if m else ''
     if star:
         return star.upper(), sub or 'RARE PHOTOS'
