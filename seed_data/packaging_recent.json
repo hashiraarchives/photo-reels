@@ -61,21 +61,11 @@
   "Do you want a leg or a breast?",
   "I coulda been a contender.",
   "The calla lilies are in bloom again.",
-  "Kiss me. Kiss me as if it were the last time."
+  "Kiss me. Kiss me as if it were the last time.",
+  "Toto, I've a feeling we're not in Kansas anymore.",
+  "I'm gonna make him an offer he can't refuse."
  ],
  "events": [
-  "Clara Bow became the 'It Girl' in It",
-  "Pickford, Chaplin, Fairbanks and Griffith founded United Artists",
-  "Greta Garbo spoke her first lines on screen in Anna Christie",
-  "Rudolph Valentino became a sensation in The Sheik",
-  "the war ended and Hollywood's stars came home",
-  "CinemaScope debuted with The Robe",
-  "All About Eve and Sunset Boulevard both premiered",
-  "Ben-Hur and Some Like It Hot both premiered",
-  "Don Juan premiered with a synchronized score and sound effects",
-  "Betty Grable posed for the most famous pinup photo of the war",
-  "Going My Way and Double Indemnity filled theaters",
-  "Citizen Kane premiered",
   "The Jazz Singer brought spoken dialogue to the movies",
   "King Kong climbed the Empire State Building",
   "CinemaScope debuted with The Robe",
@@ -123,13 +113,21 @@
   "Breakfast at Tiffany's premiered",
   "Mickey Mouse debuted in Steamboat Willie",
   "American movie attendance hit its postwar peak",
-  "Grace Kelly starred in Rear Window and The Country Girl"
+  "Grace Kelly starred in Rear Window and The Country Girl",
+  "Becky Sharp became the first feature in three-strip Technicolor",
+  "Disney's Snow White became America's first full-length animated feature",
+  "The Adventures of Robin Hood dazzled audiences in Technicolor",
+  "CinemaScope debuted with The Robe",
+  "Breakfast at Tiffany's premiered",
+  "Grace Kelly starred in Rear Window and The Country Girl",
+  "Going My Way and Double Indemnity filled theaters",
+  "Disneyland opened in Anaheim, California",
+  "Hitchcock's Psycho shocked audiences",
+  "Clara Bow became the 'It Girl' in It",
+  "the Production Code began to be strictly enforced",
+  "Dr. No introduced James Bond to movie audiences"
  ],
  "prompts": [
-  "Which era would you visit?",
-  "Which decade was the best?",
-  "Who did we miss?",
-  "Who did Dad have a pinup of?",
   "Which era would you visit?",
   "Remember these faces?",
   "Who did we miss?",
@@ -145,10 +143,13 @@
   "Remember these faces?",
   "Which decade was the best?",
   "Who did we miss?",
-  "Remember these faces?"
+  "Remember these faces?",
+  "Best year for movies?",
+  "Which era would you visit?",
+  "Remember these faces?",
+  "Who did we miss?"
  ],
  "themes": [
-  "golden",
   "beach",
   "couples",
   "silent",
@@ -177,9 +178,11 @@
   "talkies",
   "nicknames",
   "beach",
-  "couples"
+  "couples",
+  "golden"
  ],
  "lf_themes": [
+  "beach",
   "beach",
   "beach"
  ]
